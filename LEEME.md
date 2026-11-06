@@ -3,10 +3,14 @@
 Corredor futurista para celular: corres en 2D, cruzas un portal y el juego pasa a 3D.
 Un jugador, dos niveles y un jefe al final de cada uno (Centinela e Hidra).
 
-## Jugar en el computador
+## Jugar en línea
+
+https://deivid0619.github.io/nexo/
+
+## Jugar en el computador (desde esta carpeta)
 
 ```bash
-python -m http.server 5330 --bind 127.0.0.1 --directory C:/Users/David/Downloads/Videojuego
+python -m http.server 5330 --bind 127.0.0.1
 ```
 
 Abrir http://127.0.0.1:5330
@@ -14,7 +18,7 @@ Abrir http://127.0.0.1:5330
 ## Jugar en el celular (misma red Wi-Fi)
 
 ```bash
-python -m http.server 5330 --directory C:/Users/David/Downloads/Videojuego
+python -m http.server 5330
 ```
 
 En el celular abrir `http://IP-DEL-COMPUTADOR:5330` (la IP sale con `ipconfig`, "Dirección IPv4").
