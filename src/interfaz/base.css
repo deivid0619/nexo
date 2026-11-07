@@ -1,0 +1,65 @@
+@import '@fontsource/syncopate/700.css';
+@import '@fontsource/barlow/500.css';
+@import '@fontsource/barlow/600.css';
+@import '@fontsource/barlow-condensed/600.css';
+
+/* 1rem ≈ 14 px con unos 430 px de alto (celular en horizontal), hasta 20 px en pantallas grandes. */
+html {
+  font-size: clamp(13px, 3.3vh, 20px);
+  height: 100%;
+}
+
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--c-fondo);
+  color: var(--c-texto);
+  font-family: var(--f-texto);
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+#lienzo {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transition: opacity var(--d-revelar) ease;
+}
+
+/* Bordes seguros: la isla dinámica y las esquinas redondeadas nunca tapan la interfaz. */
+#capa {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  --borde-izq: max(var(--m-x), env(safe-area-inset-left));
+  --borde-der: max(var(--m-x), env(safe-area-inset-right));
+  --borde-arriba: max(var(--m-y), env(safe-area-inset-top));
+  --borde-abajo: max(var(--m-y), env(safe-area-inset-bottom));
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--c-acento);
+  outline-offset: 2px;
+}

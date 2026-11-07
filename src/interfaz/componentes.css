@@ -1,0 +1,326 @@
+/* Componentes de NEXO. Solo usan valores de tokens.css. */
+
+/* Pantallas: se cambian con un fundido. */
+.pantalla {
+  position: absolute;
+  inset: 0;
+  opacity: 1;
+  transition: opacity var(--d-pantalla) ease;
+}
+.pantalla.saliendo,
+.pantalla.entrando {
+  opacity: 0;
+}
+
+.velo-inicio,
+.velo-carga,
+.velo-torre {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.velo-inicio { background: var(--v-inicio); }
+.velo-carga { background: var(--v-carga); }
+.velo-torre { background: var(--v-torre); }
+
+/* Letras */
+.logo {
+  font-family: var(--f-logo);
+  font-weight: 700;
+  font-size: var(--t-logo);
+  letter-spacing: var(--l-logo);
+  line-height: 1;
+  text-shadow: var(--s-logo);
+}
+.logo.pequeno { font-size: var(--t-logo-pequeno); }
+
+.etiqueta {
+  font-family: var(--f-etiqueta);
+  font-weight: 600;
+  font-size: var(--t-etiqueta);
+  letter-spacing: var(--l-etiqueta);
+  text-transform: uppercase;
+  color: var(--c-etiqueta);
+}
+
+.titulo {
+  font-family: var(--f-logo);
+  font-weight: 700;
+  font-size: var(--t-titulo);
+  letter-spacing: var(--l-titulo);
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.detalle {
+  font-size: var(--t-detalle);
+  line-height: 1.8;
+  color: var(--c-texto-detalle);
+}
+
+/* Paneles */
+.panel {
+  background: var(--c-panel);
+  border: 1px solid var(--c-borde);
+  border-radius: var(--r-panel);
+  box-shadow: var(--s-panel);
+}
+
+/* Menú del inicio */
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-1);
+}
+
+.item,
+.fila {
+  display: flex;
+  align-items: center;
+  min-height: var(--alto-toque);
+  border-radius: var(--r-item);
+  text-align: left;
+  transition: background-color var(--d-toque) ease, color var(--d-toque) ease, transform var(--d-toque) ease;
+}
+.item:focus-visible,
+.fila:focus-visible {
+  outline: none; /* la opción activa ya muestra el foco */
+}
+.item:active,
+.fila:active,
+.cta:active,
+.boton:active,
+.boton-volver:active {
+  transform: scale(var(--escala-toque));
+}
+
+.item {
+  gap: var(--e-4);
+  width: var(--ancho-menu);
+  padding: 0 var(--e-5);
+  font-size: var(--t-texto);
+  font-weight: 500;
+  color: var(--c-texto-menu);
+}
+.item.activo {
+  background: var(--c-claro-activo);
+  color: var(--c-oscuro);
+  box-shadow: var(--s-activo);
+}
+
+.marca {
+  display: none;
+  flex: none;
+  width: 3px;
+  height: 1rem;
+  border-radius: 2px;
+  background: var(--c-acento);
+}
+.activo > .marca { display: inline-block; }
+
+.pista {
+  margin-left: auto;
+  font-size: var(--t-detalle);
+  color: var(--c-pista);
+}
+.activo > .pista { color: var(--c-pista-activa); }
+
+/* Filas de la lista de pisos */
+.fila {
+  gap: var(--e-3);
+  width: 100%;
+  padding: 0 var(--e-4);
+  font-size: var(--t-fila);
+  color: var(--c-texto-fila);
+}
+.fila .pista {
+  font-size: var(--t-etiqueta);
+  letter-spacing: var(--l-pista);
+}
+.fila.activo {
+  background: var(--c-claro-activo);
+  color: var(--c-oscuro);
+  box-shadow: var(--s-fila);
+}
+.fila.sellada { color: var(--c-apagado); }
+.fila.sellada .pista { color: var(--c-apagado); }
+.fila svg { flex: none; }
+
+/* Botones */
+.cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-3);
+  min-height: var(--alto-toque);
+  padding: 0 var(--e-5);
+  border-radius: var(--r-item);
+  background: var(--c-claro);
+  color: var(--c-oscuro);
+  font-size: var(--t-fila);
+  font-weight: 600;
+  box-shadow: var(--s-cta);
+  transition: transform var(--d-toque) ease;
+}
+
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--alto-toque);
+  padding: 0 var(--e-5);
+  border: 1px solid var(--c-borde);
+  border-radius: var(--r-item);
+  color: var(--c-texto);
+  font-size: var(--t-fila);
+  font-weight: 600;
+  transition: transform var(--d-toque) ease, background-color var(--d-toque) ease;
+}
+
+.boton-volver {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-3);
+  min-height: var(--alto-toque);
+  padding: 0 var(--e-5);
+  border: 1px solid var(--c-borde);
+  border-radius: var(--r-item);
+  background: var(--c-panel);
+  font-family: var(--f-etiqueta);
+  font-weight: 600;
+  font-size: var(--t-etiqueta);
+  letter-spacing: var(--l-etiqueta);
+  text-transform: uppercase;
+  color: var(--c-etiqueta);
+  transition: transform var(--d-toque) ease;
+}
+
+/* Barra de carga */
+.barra {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--c-riel);
+  overflow: hidden;
+}
+.barra-relleno {
+  height: 100%;
+  width: 0;
+  background: var(--c-acento);
+  transition: width var(--d-barra) linear;
+}
+
+/* Avisos: uno a la vez, arriba al centro */
+.aviso {
+  position: absolute;
+  z-index: 30;
+  top: var(--borde-arriba);
+  left: 50%;
+  max-width: 60vw;
+  padding: var(--e-4) var(--e-6);
+  font-size: var(--t-fila);
+  line-height: 1.4;
+  color: var(--c-texto);
+  text-align: center;
+  opacity: 0;
+  transform: translate(-50%, var(--desplaza-aviso));
+  transition: opacity var(--d-aviso-sale) ease, transform var(--d-aviso-sale) ease;
+  pointer-events: none;
+}
+.aviso.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  transition: opacity var(--d-aviso) var(--curva), transform var(--d-aviso) var(--curva);
+}
+
+/* Confirmación */
+.telon {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  background: var(--c-telon);
+}
+.modal {
+  width: min(22rem, 70vw);
+  padding: var(--e-6);
+}
+.modal .titulo { margin: 0 0 var(--e-3); }
+.modal p {
+  margin: 0 0 var(--e-6);
+  font-size: var(--t-fila);
+  line-height: 1.5;
+  color: var(--c-texto-frase);
+}
+.modal .acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--e-3);
+}
+
+/* Aviso de girar el celular: solo en vertical y con pantalla táctil */
+.girar {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e-3);
+  padding: 0 var(--e-6);
+  background: var(--c-fondo);
+  text-align: center;
+}
+.girar svg {
+  font-size: 3rem;
+  color: var(--c-acento);
+  animation: girar-icono 2.4s var(--curva) infinite;
+}
+.girar p {
+  margin: 0;
+  font-size: var(--t-texto);
+  color: var(--c-texto-detalle);
+}
+@media (orientation: portrait) and (pointer: coarse) {
+  .girar { display: flex; }
+}
+@keyframes girar-icono {
+  0%, 30% { transform: rotate(90deg); }
+  60%, 100% { transform: rotate(0deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .girar svg { animation: none; }
+}
+
+/* Mensajes del sistema (sin WebGL, contexto perdido) */
+.velo-sistema {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: grid;
+  place-items: center;
+  padding: 0 var(--e-6);
+  background: var(--c-telon);
+  font-size: var(--t-texto);
+  line-height: 1.5;
+  color: var(--c-texto);
+  text-align: center;
+}
+
+/* Medidor de rendimiento (?fps=1) */
+.medidor {
+  position: fixed;
+  z-index: 60;
+  top: max(var(--e-2), env(safe-area-inset-top));
+  right: max(var(--e-2), env(safe-area-inset-right));
+  padding: var(--e-1) var(--e-3);
+  border-radius: var(--r-item);
+  background: var(--c-panel);
+  font-family: var(--f-etiqueta);
+  font-weight: 600;
+  font-size: var(--t-etiqueta);
+  letter-spacing: var(--l-pista);
+  color: var(--c-etiqueta);
+  pointer-events: none;
+}

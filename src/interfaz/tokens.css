@@ -1,0 +1,91 @@
+/*
+ * Sistema de valores de NEXO: la única fuente de colores, letras, espacios y tiempos.
+ * Sale de la maqueta aprobada (docs/maquetas/2026-11-06-escena-inicio.html) y del
+ * documento de diseño (sección 7). Ninguna pantalla define valores propios.
+ * Tamaños en rem: 1rem ≈ 14 px con unos 430 px de alto (ver base.css).
+ */
+:root {
+  /* Color: texto */
+  --c-texto: #F3EEE6;
+  --c-texto-menu: #ECE5D9;
+  --c-texto-frase: #EDE6DA;
+  --c-texto-detalle: #E2DACD;
+  --c-texto-fila: #CFC6B8;
+  --c-etiqueta: #D3C9BA;
+  --c-pista: #BDB3A3;
+  --c-pista-activa: #61584C;
+  --c-apagado: #8E8579;
+
+  /* Color: superficies */
+  --c-fondo: #1B1814;
+  --c-claro: #F4EFE7;
+  --c-claro-activo: rgba(244, 239, 231, .94);
+  --c-oscuro: #1F1B16;
+  --c-acento: #7FD6DC;
+  --c-panel: rgba(26, 22, 18, .64);
+  --c-borde: rgba(244, 239, 231, .12);
+  --c-riel: rgba(244, 239, 231, .16);
+  --c-telon: rgba(20, 16, 12, .6);
+
+  /* Sombras */
+  --s-panel: 0 12px 32px rgba(0, 0, 0, .34);
+  --s-activo: 0 8px 22px rgba(0, 0, 0, .32);
+  --s-fila: 0 6px 16px rgba(0, 0, 0, .28);
+  --s-cta: 0 8px 20px rgba(0, 0, 0, .3);
+  --s-logo: 0 2px 18px rgba(0, 0, 0, .4);
+
+  /* Velos sobre la escena, uno por pantalla */
+  --v-inicio: linear-gradient(90deg, rgba(20, 16, 12, .72) 0%, rgba(20, 16, 12, .32) 34%, rgba(20, 16, 12, 0) 58%),
+    linear-gradient(0deg, rgba(20, 16, 12, .5), rgba(20, 16, 12, 0) 38%);
+  --v-carga: rgba(20, 16, 12, .42);
+  --v-torre: linear-gradient(90deg, rgba(20, 16, 12, .66), rgba(20, 16, 12, .05) 42%, rgba(20, 16, 12, .05) 60%, rgba(20, 16, 12, .6));
+
+  /* Letras */
+  --f-logo: 'Syncopate', sans-serif;
+  --f-texto: 'Barlow', sans-serif;
+  --f-etiqueta: 'Barlow Condensed', sans-serif;
+  --l-logo: .42em;
+  --l-titulo: .3em;
+  --l-etiqueta: .2em;
+  --l-pista: .06em;
+  --t-logo: clamp(1.7rem, 5.4vw, 2.7rem);
+  --t-logo-pequeno: 1.3rem;
+  --t-titulo: 1.2rem;
+  --t-texto: 1rem;
+  --t-fila: .93rem;
+  --t-detalle: .86rem;
+  --t-etiqueta: .79rem;
+
+  /* Espacios y formas */
+  --m-x: 4.5vw;
+  --m-y: 9vh;
+  --e-1: .15rem;
+  --e-2: .3rem;
+  --e-3: .5rem;
+  --e-4: .65rem;
+  --e-5: .85rem;
+  --e-6: 1rem;
+  --r-panel: 10px;
+  --r-item: 6px;
+  --ancho-menu: 14.7rem;
+  --ancho-panel: 31vw;
+  --alto-toque: 44px;
+
+  /* Movimiento */
+  --d-pantalla: 280ms;
+  --d-revelar: 600ms;
+  --d-aviso: 200ms;
+  --d-aviso-sale: 160ms;
+  --d-toque: 80ms;
+  --d-barra: 200ms;
+  --curva: cubic-bezier(.2, .7, .2, 1);
+  --desplaza-aviso: -8px;
+  --escala-toque: .98;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --desplaza-aviso: 0px;
+    --escala-toque: 1;
+  }
+}
