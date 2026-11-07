@@ -194,9 +194,9 @@
   text-align: left;
   transition: background-color var(--d-toque) ease, color var(--d-toque) ease, transform var(--d-toque) ease;
 }
-.item:focus-visible,
-.fila:focus-visible {
-  outline: none; /* la opción activa ya muestra el foco */
+.item.activo:focus-visible,
+.fila.activo:focus-visible {
+  outline: none; /* la opción marcada ya muestra el foco; una sellada con el foco lleva el contorno */
 }
 .item:active,
 .fila:active,

@@ -143,3 +143,45 @@ test('el teclado va primero a la pantalla actual', () => {
   expect(alTecla).toHaveBeenCalledTimes(1);
   expect(historial.back).not.toHaveBeenCalled();
 });
+
+// Revisión final: un doble toque en Volver, Escape sostenido o el gesto atrás más Volver
+// no pueden llamar dos veces a history.back(): la segunda saldría del juego.
+function enTorre() {
+  g.ir('inicio', { instantaneo: true });
+  g.ir('torre', { apilar: true });
+  vi.advanceTimersByTime(560);
+}
+
+test('dos "atrás" seguidos antes del popstate salen una sola vez', () => {
+  enTorre();
+  g.atras();
+  g.atras();
+  expect(historial.back).toHaveBeenCalledTimes(1);
+});
+
+test('"atrás" mientras se vuelve por un popstate no sale del juego', () => {
+  enTorre();
+  // El gesto atrás del sistema: llega el popstate sin pasar por atras().
+  ventana.dispatchEvent(new PopStateEvent('popstate', { state: { pantalla: 'inicio' } }));
+  g.atras();
+  vi.advanceTimersByTime(560);
+  expect(g.actual()).toBe('inicio');
+  expect(historial.back).not.toHaveBeenCalled();
+});
+
+test('después de volver, "atrás" funciona de nuevo desde la torre', () => {
+  enTorre();
+  g.atras();
+  ventana.dispatchEvent(new PopStateEvent('popstate', { state: { pantalla: 'inicio' } }));
+  vi.advanceTimersByTime(560);
+  g.ir('torre', { apilar: true });
+  vi.advanceTimersByTime(560);
+  g.atras();
+  expect(historial.back).toHaveBeenCalledTimes(2);
+});
+
+test('Escape sostenido (tecla repetida) no vuelve atrás', () => {
+  g.ir('torre', { instantaneo: true });
+  ventana.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', repeat: true }));
+  expect(historial.back).not.toHaveBeenCalled();
+});

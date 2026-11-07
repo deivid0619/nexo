@@ -19,6 +19,8 @@ Solo se aceptan recursos que se puedan redistribuir en un repositorio público
 | Barlow Condensed | Jeremy Tribby | https://fonts.google.com/specimen/Barlow+Condensed | OFL-1.1 |
 
 Las fuentes se incluyen con los paquetes de Fontsource (https://fontsource.org).
+El sitio publicado lleva los textos completos de estas licencias en `avance/LICENCIAS.txt`
+(lo arma `scripts/armar-sitio.mjs`), porque el build quita los comentarios de licencia.
 
 ## Íconos
 

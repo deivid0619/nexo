@@ -87,3 +87,20 @@ test('en horizontal no aparece el aviso de girar', async ({ page }) => {
   await abrir(page);
   await expect(page.locator('.girar')).toBeHidden();
 });
+
+// Revisión final: el foco del teclado y la opción marcada son la misma.
+test('Tab hasta Registros y Enter abren Registros, no Continuar', async ({ page }) => {
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      'nexo.progreso',
+      JSON.stringify({ version: 1, pisoActual: 'cristal', completados: ['tierra'], records: {}, registros: [], guardadoEn: Date.now() }),
+    ),
+  );
+  await abrir(page);
+  const registros = page.getByRole('button', { name: /Registros/ });
+  await registros.focus();
+  await expect(registros).toHaveClass(/activo/);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.aviso')).toContainText('Disponible en una próxima etapa.');
+  expect(await page.evaluate(() => window.nexo!.pantalla())).toBe('inicio');
+});

@@ -20,8 +20,11 @@ const deshabilitado = (el: Element) => el.getAttribute('aria-disabled') === 'tru
 /** Un menú vertical que se maneja igual con el dedo, el mouse y el teclado. */
 export function crearListaMenu(contenedor: HTMLElement, opciones: Opciones): ListaMenu {
   const items = [...contenedor.querySelectorAll<HTMLElement>(opciones.selector)];
+  const documento = contenedor.ownerDocument;
   let activo = -1;
   const quitar: (() => void)[] = [];
+  /** Índice del elemento que tiene el foco del navegador, o -1. */
+  const conFoco = () => items.indexOf(documento.activeElement as HTMLElement);
 
   const lista: ListaMenu = {
     activo: () => activo,
@@ -30,6 +33,9 @@ export function crearListaMenu(contenedor: HTMLElement, opciones: Opciones): Lis
       items[activo]?.classList.remove('activo');
       activo = indice;
       items[activo].classList.add('activo');
+      // Si el foco del teclado está en la lista, va con la selección: son la misma cosa.
+      const foco = conFoco();
+      if (foco >= 0 && foco !== activo) items[activo].focus({ preventScroll: true });
       opciones.alCambiar?.(activo);
     },
     mover(delta) {
@@ -48,9 +54,16 @@ export function crearListaMenu(contenedor: HTMLElement, opciones: Opciones): Lis
         return true;
       }
       if (e.key === 'Enter' || e.key === ' ') {
-        // Sin esto, un botón con el foco del navegador también se activaría por su cuenta.
+        const foco = conFoco();
+        // Con el foco en otro botón (Volver, Entrar al portal), ese botón responde por su cuenta.
+        const otro = documento.activeElement;
+        if (foco < 0 && otro instanceof HTMLElement && otro !== documento.body && otro.matches('button, a, [tabindex]')) {
+          return false;
+        }
+        // Sin esto, el botón con el foco también se activaría por su cuenta.
         e.preventDefault();
-        if (activo >= 0) opciones.alActivar(activo, 'tecla');
+        const elegido = foco >= 0 ? foco : activo;
+        if (elegido >= 0) opciones.alActivar(elegido, 'tecla');
         return true;
       }
       return false;
@@ -70,9 +83,12 @@ export function crearListaMenu(contenedor: HTMLElement, opciones: Opciones): Lis
       opciones.alActivar(i, 'toque');
     };
     el.addEventListener('pointerenter', alEntrar);
+    // Tab también elige: el foco del teclado y la selección no se separan.
+    el.addEventListener('focus', alEntrar);
     el.addEventListener('click', alTocar);
     quitar.push(() => {
       el.removeEventListener('pointerenter', alEntrar);
+      el.removeEventListener('focus', alEntrar);
       el.removeEventListener('click', alTocar);
     });
   });

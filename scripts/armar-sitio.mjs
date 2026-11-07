@@ -1,6 +1,6 @@
 // Arma _site/ como queda en GitHub Pages: el prototipo en la raíz y la etapa en /avance/.
 // Uso: npm run sitio (primero construye dist/ con npm run build).
-import { cpSync, existsSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -20,5 +20,42 @@ cpSync(prototipo, sitio, { recursive: true });
 cpSync(dist, join(sitio, 'avance'), { recursive: true });
 // Sin Jekyll: GitHub Pages publica los archivos tal cual.
 writeFileSync(join(sitio, '.nojekyll'), '');
+
+// El build quita los comentarios de licencia: los textos van aparte, junto a la app.
+const licencia = (paquete) => readFileSync(join(raiz, 'node_modules', paquete, 'LICENSE'), 'utf8').trim();
+const TABLER = `MIT License
+
+Copyright (c) 2020-2024 Paweł Kuna
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.`;
+const partes = [
+  ['three.js (MIT)', licencia('three')],
+  ['Syncopate, por @fontsource/syncopate (Apache-2.0)', licencia('@fontsource/syncopate')],
+  ['Barlow, por @fontsource/barlow (OFL-1.1)', licencia('@fontsource/barlow')],
+  ['Barlow Condensed, por @fontsource/barlow-condensed (OFL-1.1)', licencia('@fontsource/barlow-condensed')],
+  ['Tabler Icons 3.19.0 (MIT)', TABLER],
+];
+const linea = '='.repeat(72);
+writeFileSync(
+  join(sitio, 'avance', 'LICENCIAS.txt'),
+  'Licencias de lo que NEXO incluye. Autores y enlaces: CREDITOS.md del repositorio.\n\n' +
+    partes.map(([nombre, texto]) => `${linea}\n${nombre}\n${linea}\n\n${texto}\n`).join('\n'),
+);
 
 console.log('Sitio listo en _site/: prototipo en la raíz y la etapa en /avance/.');

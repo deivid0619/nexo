@@ -44,6 +44,8 @@ export function crearGestorPantallas(capa: HTMLElement, deps: Dependencias): Ges
   let actual: Pantalla | null = null;
   let enCurso = false;
   let pendiente: IdPantalla | null = null;
+  /** Ya se pidió history.back() y su popstate no ha llegado: otro "atrás" saldría del juego. */
+  let volviendo = false;
 
   const mostrar = (p: Pantalla) => {
     p.elemento.hidden = false;
@@ -100,7 +102,10 @@ export function crearGestorPantallas(capa: HTMLElement, deps: Dependencias): Ges
     },
 
     atras() {
-      if (actual && !SIN_ATRAS.includes(actual.id)) historial.back();
+      // Un solo "atrás" a la vez: durante un cambio, o con uno ya en camino, se ignora.
+      if (enCurso || volviendo || !actual || SIN_ATRAS.includes(actual.id)) return;
+      volviendo = true;
+      historial.back();
     },
 
     actual: () => actual?.id ?? null,
@@ -108,6 +113,7 @@ export function crearGestorPantallas(capa: HTMLElement, deps: Dependencias): Ges
   };
 
   ventana.addEventListener('popstate', (e) => {
+    volviendo = false;
     const estado = (e as PopStateEvent).state as { pantalla?: IdPantalla } | null;
     const destino = estado?.pantalla ?? 'inicio';
     if (enCurso) pendiente = destino;
@@ -117,7 +123,8 @@ export function crearGestorPantallas(capa: HTMLElement, deps: Dependencias): Ges
   ventana.addEventListener('keydown', (e) => {
     const tecla = e as KeyboardEvent;
     if (actual?.alTecla?.(tecla)) return;
-    if (tecla.key === 'Escape') gestor.atras();
+    // Escape sostenido se repite solo: cuenta una vez.
+    if (tecla.key === 'Escape' && !tecla.repeat) gestor.atras();
   });
 
   return gestor;

@@ -20,3 +20,13 @@ test('la app funciona en /avance/ sin recursos rotos', async ({ page }) => {
   expect(rotos).toEqual([]);
   expect(errores).toEqual([]);
 });
+
+// Revisión final: el build quita los comentarios de licencia, así que el sitio lleva sus textos aparte.
+test('el sitio lleva las licencias de lo que incluye', async ({ request }) => {
+  const respuesta = await request.get('/avance/LICENCIAS.txt');
+  expect(respuesta.ok()).toBe(true);
+  const texto = await respuesta.text();
+  for (const aviso of ['three.js authors', 'Apache License', 'SIL OPEN FONT LICENSE', 'Paweł Kuna']) {
+    expect(texto).toContain(aviso);
+  }
+});

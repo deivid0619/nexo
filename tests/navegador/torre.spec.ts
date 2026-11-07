@@ -146,3 +146,22 @@ test.describe('movimiento reducido', () => {
     expect((await page.evaluate(() => window.nexo!.camara())).posicion).toEqual([4, 3, 6]);
   });
 });
+
+// Revisión final: un doble toque en Volver no puede llamar dos veces a "atrás" (saldría del juego).
+test('doble toque en Volver vuelve al inicio sin salir del juego', async ({ page }) => {
+  await abrirTorre(page);
+  const direccion = page.url();
+  await page.getByRole('button', { name: 'Volver' }).dblclick();
+  await llegar(page, 'inicio');
+  await page.waitForTimeout(400);
+  expect(page.url()).toBe(direccion);
+  expect(await pantalla(page)).toBe('inicio');
+});
+
+// Revisión final: con el teclado, Enter activa el botón que tiene el foco.
+test('Tab hasta Volver y Enter vuelven al inicio', async ({ page }) => {
+  await abrirTorre(page);
+  await page.getByRole('button', { name: 'Volver' }).focus();
+  await page.keyboard.press('Enter');
+  await llegar(page, 'inicio');
+});

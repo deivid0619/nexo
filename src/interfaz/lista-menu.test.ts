@@ -67,3 +67,34 @@ test('empieza en el inicial pedido y al destruirla deja de escuchar', () => {
   items[0].click();
   expect(alActivar).toHaveBeenCalledTimes(1);
 });
+
+// Revisión final: el foco del teclado (Tab) y la opción marcada son la misma cosa,
+// y Enter activa lo que tiene el foco.
+test('el foco del teclado mueve la selección', () => {
+  items[1].focus();
+  expect(l.activo()).toBe(1);
+  expect(marcados()).toEqual([false, true, false, false]);
+});
+
+test('con el foco en la lista, las flechas mueven también el foco', () => {
+  items[0].focus();
+  l.teclado(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+  expect(document.activeElement).toBe(items[1]);
+  l.teclado(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+  expect(document.activeElement).toBe(items[3]);
+});
+
+test('Enter activa el elemento con el foco, aunque esté deshabilitado', () => {
+  items[2].focus();
+  expect(l.activo()).toBe(0);
+  l.teclado(new KeyboardEvent('keydown', { key: 'Enter' }));
+  expect(alActivar).toHaveBeenLastCalledWith(2, 'tecla');
+});
+
+test('Enter con el foco en un botón fuera de la lista no se usa', () => {
+  const fuera = document.createElement('button');
+  document.body.append(fuera);
+  fuera.focus();
+  expect(l.teclado(new KeyboardEvent('keydown', { key: 'Enter' }))).toBe(false);
+  expect(alActivar).not.toHaveBeenCalled();
+});
