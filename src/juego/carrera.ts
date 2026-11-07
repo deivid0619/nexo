@@ -12,6 +12,8 @@ const ATERRIZAJE_S = 0.25;
 const SACUDIDA_GOLPE = 0.35;
 const SACUDIDA_ROTO = 0.15;
 const VIBRACION_MS = 120;
+/** El panel de fin espera a que se vea la caída o la llegada (el prototipo esperaba 0,9 s). */
+const DEMORA_PANEL_S = 0.8;
 
 export type PistaHud = 'saltar' | 'carril' | null;
 
@@ -81,6 +83,8 @@ export function crearCarrera(deps: DepsCarrera): Carrera {
   let pistaActual: PistaHud = null;
   let vioCarriles = false;
   let terminada = false;
+  /** El resultado ya guardado, esperando su momento para mostrarse. */
+  let panel: { en: number; resultado: ResultadoCarrera } | null = null;
 
   const ponerPista = (cual: PistaHud) => {
     if (cual === pistaActual) return;
@@ -127,8 +131,9 @@ export function crearCarrera(deps: DepsCarrera): Carrera {
         if (terminada) break;
         terminada = true;
         ponerPista(null);
+        // El récord se guarda ya (por si sale antes); el panel aparece un momento después.
         const { record, nuevo } = deps.guardarRecord(s.puntaje);
-        hud.terminar({ tipo: e.tipo, puntaje: s.puntaje, record, nuevoRecord: nuevo });
+        panel = { en: t + DEMORA_PANEL_S, resultado: { tipo: e.tipo, puntaje: s.puntaje, record, nuevoRecord: nuevo } };
         break;
       }
     }
@@ -140,6 +145,7 @@ export function crearCarrera(deps: DepsCarrera): Carrera {
       sim = crearSimulacion(nivel, { desde: o.desde, sinDanio: o.sinDanio });
       golpeHasta = aterrizajeHasta = 0;
       terminada = false;
+      panel = null;
       pistaActual = null;
       vioCarriles = sim.modo === 3;
       corredor.reiniciar();
@@ -157,6 +163,10 @@ export function crearCarrera(deps: DepsCarrera): Carrera {
       if (!s) return;
       t = ahora;
       for (const e of s.paso(dt)) alEvento(e, s);
+      if (panel && t >= panel.en) {
+        hud.terminar(panel.resultado);
+        panel = null;
+      }
       corredor.actualizar(dt, s, t < golpeHasta, t < aterrizajeHasta);
       camara.actualizar(dt, s, aspecto);
       pista.actualizar(dt, t, s, camara.mezcla());

@@ -203,6 +203,12 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
 
     paso(dt) {
       if (estado !== 'corriendo') {
+        // La carrera ya terminó, pero si fue en el aire el corredor sigue cayendo hasta el suelo.
+        if (y > 0) {
+          vy -= GRAVEDAD * dt;
+          y = Math.max(0, y + vy * dt);
+          if (y === 0) vy = 0;
+        }
         const quedan = pendientes;
         pendientes = [];
         return quedan;

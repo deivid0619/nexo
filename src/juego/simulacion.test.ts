@@ -225,3 +225,25 @@ test('el puntaje son los metros enteros más los bonos', () => {
   correrHasta(s, 10);
   expect(s.puntaje).toBe(Math.floor(s.distancia) + 25);
 });
+
+// Revisión final: morir en medio de un salto dejaba al corredor flotando.
+test('si pierde en el aire, cae hasta el suelo aunque la carrera ya terminó', () => {
+  const s = crearSimulacion(
+    nivel([
+      { en: 1, tipo: 'portal', a: 3 },
+      { en: 20, tipo: 'bloque', carril: 0 },
+      { en: 40, tipo: 'bloque', carril: 0 },
+      { en: 60, tipo: 'bloque', carril: 0 },
+    ]),
+  );
+  correrHasta(s, 57);
+  expect(s.vidas).toBe(1);
+  s.saltar();
+  correrHasta(s, 70);
+  expect(s.estado).toBe('derrota');
+  expect(s.y).toBeGreaterThan(0);
+  const distancia = s.distancia;
+  correr(s, 1);
+  expect(s.y).toBe(0);
+  expect(s.distancia).toBe(distancia);
+});

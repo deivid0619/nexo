@@ -145,3 +145,26 @@ test('detener termina la carrera y empezar otra vez arranca de cero', () => {
   carrera.empezar();
   expect(carrera.estado()).toMatchObject({ distancia: 0, y: 0, vidas: 3, modo: 2 });
 });
+
+// Revisión final: el panel salía en el mismo cuadro del golpe final.
+test('el récord se guarda al terminar, pero el panel espera un momento', () => {
+  const { carrera, hud, guardarRecord } = armar({ desde: 50, sinDanio: true });
+  carrera.empezar();
+  while (carrera.estado()!.estado === 'corriendo') correr(carrera, DT);
+  expect(guardarRecord).toHaveBeenCalledTimes(1);
+  expect(hud.terminar).not.toHaveBeenCalled();
+  correr(carrera, 0.5);
+  expect(hud.terminar).not.toHaveBeenCalled();
+  correr(carrera, 0.4);
+  expect(hud.terminar).toHaveBeenCalledTimes(1);
+});
+
+test('si sale antes de que aparezca el panel, la carrera siguiente no lo muestra', () => {
+  const { carrera, hud } = armar({ desde: 50, sinDanio: true });
+  carrera.empezar();
+  while (carrera.estado()!.estado === 'corriendo') correr(carrera, DT);
+  carrera.detener();
+  carrera.empezar();
+  correr(carrera, 1);
+  expect(hud.terminar).not.toHaveBeenCalled();
+});
