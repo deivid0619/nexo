@@ -26,7 +26,14 @@ test('el sitio lleva las licencias de lo que incluye', async ({ request }) => {
   const respuesta = await request.get('/avance/LICENCIAS.txt');
   expect(respuesta.ok()).toBe(true);
   const texto = await respuesta.text();
-  for (const aviso of ['three.js authors', 'Apache License', 'SIL OPEN FONT LICENSE', 'Paweł Kuna']) {
+  for (const aviso of ['three.js authors', 'Apache License', 'SIL OPEN FONT LICENSE', 'Paweł Kuna', 'Quaternius']) {
     expect(texto).toContain(aviso);
   }
+});
+
+test('el sitio sirve el corredor 3D de la carrera', async ({ request }) => {
+  const respuesta = await request.get('/avance/modelos/corredor.glb');
+  expect(respuesta.ok()).toBe(true);
+  // Un GLB empieza con la palabra "glTF".
+  expect((await respuesta.body()).subarray(0, 4).toString('ascii')).toBe('glTF');
 });

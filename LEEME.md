@@ -7,7 +7,18 @@ final de cada piso.
 ## Jugar
 
 - **Prototipo** (el primer juego jugable): https://deivid0619.github.io/nexo/
-- **Avance** (la etapa en construcción: carga, inicio y mapa de la torre): https://deivid0619.github.io/nexo/avance/
+- **Avance** (la etapa en construcción: carga, inicio, mapa de la torre y la primera carrera por la
+  Tierra baldía): https://deivid0619.github.io/nexo/avance/
+
+### Controles de la carrera
+
+En el mapa de la torre, "Entrar al portal" en la Tierra baldía abre la carrera.
+
+| Acción | Celular | Teclado |
+|---|---|---|
+| Saltar (y doble salto con la habilidad) | tocar o deslizar hacia arriba | espacio, flecha arriba o W |
+| Cambiar de carril (solo en 3D) | deslizar a los lados | flechas izquierda y derecha, o A y D |
+| Salir al mapa | botón Salir o atrás | Escape |
 
 Cada cambio que llega a `main` se publica solo, y únicamente si las pruebas pasan
 (`.github/workflows/publicar.yml`).
@@ -67,6 +78,16 @@ npm run sitio:servir
 
 Abrir http://127.0.0.1:5332/avance/
 
+### Rehacer el corredor
+
+`public/modelos/corredor.glb` sale de *Universal Animation Library* (Standard) de Quaternius, CC0
+(https://quaternius.com/packs/universalanimationlibrary.html). El paquete se descarga aparte, fuera
+del repositorio; el script recibe la ruta de `UAL1_Standard.glb` dentro del paquete:
+
+```bash
+npm run modelos:corredor -- ruta/a/UAL1_Standard.glb
+```
+
 ## Opciones de prueba
 
 Se agregan a la dirección, por ejemplo `http://127.0.0.1:5331/?prueba=1&fps=1`.
@@ -75,6 +96,9 @@ Se agregan a la dirección, por ejemplo `http://127.0.0.1:5331/?prueba=1&fps=1`.
 - `?fps=1` muestra los cuadros por segundo y las llamadas de dibujo.
 - `?calidad=alto|medio|bajo` fija la calidad de los gráficos en lugar de elegirla sola.
 - `?fallarCarga=1` (junto con `?prueba=1`) hace fallar la carga una vez para ver "Reintentar".
+- `?desde=80` (junto con `?prueba=1`) empieza la carrera en ese metro del tramo; los portales
+  anteriores ya cuentan (desde el metro 85 se corre en 3D).
+- `?dios=1` (junto con `?prueba=1`) la carrera no quita vidas.
 
 ## Prototipo
 
@@ -99,18 +123,23 @@ Abrir http://127.0.0.1:5330. Para el celular, quitar `--bind 127.0.0.1` y abrir
 ```text
 src/
   main.ts          arranque: carga, pantallas, cámara y bucle
-  camara/          tomas y movimiento de la cámara de los menús
+  camara/          cámara de los menús (tomas) y de la carrera (lateral ↔ detrás)
   carga/           tareas de la carga con avance real
-  datos/           los pisos de la torre
+  datos/           los pisos de la torre y los niveles (tramos) con su validación
+  entidades/       el corredor animado (GLB con esqueleto)
+  entrada/         toques y teclas → intenciones (saltar, carril)
   guardado/        progreso guardado en el dispositivo
   interfaz/        sistema de diseño (tokens.css), componentes y pantallas
-  mundo/           escenas 3D (tierra-baldia: el exterior del búnker)
+  juego/           la simulación de la carrera (reglas, sin Three.js) y la carrera en curso
+  mundo/           escenas 3D (tierra-baldia: el exterior del búnker y la pista de la carrera)
   nucleo/          bucle, azar con semilla, preferencias y modo de prueba
   render/          renderizador, calidad y medidor
   textos/          todos los textos del juego
 tests/navegador/   pruebas en el navegador (Playwright)
 prototipo/         el primer juego jugable, sin compilar
-scripts/           armar-sitio.mjs: arma _site/ para GitHub Pages
+public/modelos/    corredor.glb: el maniquí CC0 con sus 7 animaciones
+scripts/           armar-sitio.mjs: arma _site/ para GitHub Pages;
+                   preparar-corredor.mjs: recorta y comprime el GLB del corredor
 docs/              documento de diseño, planes y maquetas aprobadas
 ```
 

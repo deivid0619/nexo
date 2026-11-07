@@ -44,12 +44,19 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.`;
+// El corredor (modelos/corredor.glb) es CC0: no exige aviso, pero se nombra al autor.
+const QUATERNIUS = `Universal Animation Library (Standard), por Quaternius
+https://quaternius.com/packs/universalanimationlibrary.html
+
+Licencia: CC0 1.0 Universal (dominio público). No exige atribución.
+https://creativecommons.org/publicdomain/zero/1.0/`;
 const partes = [
   ['three.js (MIT)', licencia('three')],
   ['Syncopate, por @fontsource/syncopate (Apache-2.0)', licencia('@fontsource/syncopate')],
   ['Barlow, por @fontsource/barlow (OFL-1.1)', licencia('@fontsource/barlow')],
   ['Barlow Condensed, por @fontsource/barlow-condensed (OFL-1.1)', licencia('@fontsource/barlow-condensed')],
   ['Tabler Icons 3.19.0 (MIT)', TABLER],
+  ['Maniquí y animaciones del corredor, modelos/corredor.glb (CC0 1.0)', QUATERNIUS],
 ];
 const linea = '='.repeat(72);
 writeFileSync(
