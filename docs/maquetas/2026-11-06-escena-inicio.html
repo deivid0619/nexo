@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEXO · maqueta aprobada</title>
+<!-- Maqueta aprobada por David el 2026-11-06. Referencia visual para la etapa 1 (no es código del juego). -->
+<link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@700&family=Barlow:wght@500;600&family=Barlow+Condensed:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+body{margin:0;background:#1b1814;font-family:Barlow,sans-serif;color:#F3EEE6;padding:16px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin:0 auto 10px;max-width:960px}
+.bar button{font:inherit;font-size:14px;padding:6px 14px;border-radius:8px;border:1px solid #6b6257;background:transparent;color:#F3EEE6;cursor:pointer}
+.bar button[aria-pressed=true]{background:#F4EFE7;color:#1F1B16}
+.dev{background:#2b2722;border:1px solid #4a433b;border-radius:30px;padding:9px;max-width:960px;margin:0 auto}
+#scr{position:relative;aspect-ratio:640/296;border-radius:22px;overflow:hidden;background:#3a342d}
+#scr canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#capa{position:absolute;inset:0;transition:opacity .28s ease;color:#F3EEE6}
+.vin{position:absolute;inset:0;background:linear-gradient(90deg,rgba(20,16,12,.72) 0%,rgba(20,16,12,.32) 34%,rgba(20,16,12,0) 58%),linear-gradient(0deg,rgba(20,16,12,.5),rgba(20,16,12,0) 38%)}
+.logo{font-family:Syncopate,sans-serif;font-weight:700;letter-spacing:.42em;font-size:clamp(24px,5.4vw,38px);text-shadow:0 2px 18px rgba(0,0,0,.4)}
+.eti{font-family:'Barlow Condensed',sans-serif;font-weight:600;letter-spacing:.2em;font-size:11px;text-transform:uppercase;color:#D3C9BA}
+.it{display:flex;align-items:center;gap:9px;width:206px;padding:7px 12px;font-size:14px;font-weight:500;color:#ECE5D9;border-radius:6px;margin-top:2px}
+.it.on{background:rgba(244,239,231,.94);color:#1F1B16;box-shadow:0 8px 22px rgba(0,0,0,.32)}
+.it .k{margin-left:auto;font-size:12px;color:#BDB3A3}
+.it.on .k{color:#61584C}
+.pt{display:inline-block;width:3px;height:14px;border-radius:2px;background:#7FD6DC}
+.panel{position:absolute;background:rgba(26,22,18,.64);border:1px solid rgba(244,239,231,.12);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.34)}
+.fila{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:6px;font-size:13px;margin-top:3px;color:#CFC6B8}
+.fila.on{background:rgba(244,239,231,.94);color:#1F1B16;box-shadow:0 6px 16px rgba(0,0,0,.28)}
+.fila.off{color:#8E8579}
+.fila .k{margin-left:auto;font-size:11px;letter-spacing:.06em}
+.cta{display:flex;justify-content:space-between;align-items:center;background:#F4EFE7;color:#1F1B16;border-radius:6px;padding:8px 12px;font-weight:600;font-size:13px;box-shadow:0 8px 20px rgba(0,0,0,.3)}
+</style>
+</head>
+<body>
+<div class="bar">
+<button data-p="carga" aria-pressed="false">Carga</button>
+<button data-p="inicio" aria-pressed="true">Inicio</button>
+<button data-p="torre" aria-pressed="false">Mapa de la torre</button></div>
+<div class="dev"><div id="scr"><div id="capa"></div></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+const box=document.getElementById('scr'),capa=document.getElementById('capa');
+const R=new THREE.WebGLRenderer({antialias:true});
+R.setPixelRatio(Math.min(2,devicePixelRatio));
+R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
+R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=1.08;
+box.insertBefore(R.domElement,capa);
+const S=new THREE.Scene();
+const FOG=new THREE.Color('#C9A47E');S.fog=new THREE.Fog(FOG,30,520);S.background=FOG;
+const C=new THREE.PerspectiveCamera(42,2,.1,2200);
+const sunDir=new THREE.Vector3(-.55,.16,-.8).normalize();
+S.add(new THREE.Mesh(new THREE.SphereGeometry(1600,32,16),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,
+uniforms:{cTop:{value:new THREE.Color('#617080')},cHor:{value:FOG},cSun:{value:new THREE.Color('#FFE2B8')},dir:{value:sunDir}},
+vertexShader:'varying vec3 vP;void main(){vP=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+fragmentShader:'uniform vec3 cTop;uniform vec3 cHor;uniform vec3 cSun;uniform vec3 dir;varying vec3 vP;void main(){vec3 p=normalize(vP);float h=clamp(p.y,0.0,1.0);vec3 c=mix(cHor,cTop,pow(h,0.6));float s=max(dot(p,normalize(dir)),0.0);c+=cSun*(pow(s,700.0)*1.4+pow(s,10.0)*0.32);if(p.y<0.0)c=cHor;gl_FragColor=vec4(c,1.0);}'})));
+S.add(new THREE.HemisphereLight(0xC3CAD2,0x6E5843,.7));
+const sol=new THREE.DirectionalLight(0xFFD2A0,1.75);
+sol.position.copy(sunDir).multiplyScalar(120).add(new THREE.Vector3(0,0,-20));sol.target.position.set(0,0,-20);S.add(sol,sol.target);
+sol.castShadow=true;sol.shadow.mapSize.set(2048,2048);
+const sc=sol.shadow.camera;sc.left=-70;sc.right=70;sc.top=70;sc.bottom=-70;sc.near=1;sc.far=330;sol.shadow.bias=-.0006;sol.shadow.normalBias=.03;
+const alt=(x,z)=>{const m=Math.min(1,Math.max(0,(Math.abs(x)-5)/12));return m*(Math.sin(x*.045)*1.4+Math.sin(z*.028+x*.02)*1.8+Math.sin(x*.12+z*.09)*.5+1.4)};
+{const g=new THREE.PlaneGeometry(700,700,140,140);g.rotateX(-Math.PI/2);g.translate(0,0,-250);
+const p=g.attributes.position,col=new Float32Array(p.count*3),a=new THREE.Color('#A68C69'),b=new THREE.Color('#7A6650'),r=new THREE.Color('#5C544B'),t=new THREE.Color();
+for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i),h=alt(x,z);p.setY(i,h);const m=Math.min(1,Math.max(0,(Math.abs(x)-5)/12));
+const n=(Math.sin(x*.7)*Math.sin(z*.6)+1)/2;t.copy(b).lerp(a,Math.min(1,n*.6+h*.09));t.lerp(r,(1-m)*.55);col[i*3]=t.r;col[i*3+1]=t.g;col[i*3+2]=t.b}
+g.setAttribute('color',new THREE.BufferAttribute(col,3));g.computeVertexNormals();
+const s=new THREE.Mesh(g,new THREE.MeshStandardMaterial({vertexColors:true,roughness:1}));s.receiveShadow=true;S.add(s)}
+const via=new THREE.Mesh(new THREE.PlaneGeometry(9,700),new THREE.MeshStandardMaterial({color:'#4F4842',roughness:1}));via.rotation.x=-Math.PI/2;via.position.set(0,.03,-250);via.receiveShadow=true;S.add(via);
+const matL=new THREE.MeshStandardMaterial({color:'#8E877C',roughness:1});
+for(let z=4;z>-320;z-=8){if(Math.random()<.3)continue;const d=new THREE.Mesh(new THREE.BoxGeometry(.18,.02,2.2),matL);d.position.set(0,.05,z);d.receiveShadow=true;S.add(d)}
+function fachada(){const c=document.createElement('canvas');c.width=128;c.height=256;const g=c.getContext('2d');
+g.fillStyle='#8F877B';g.fillRect(0,0,128,256);
+for(let i=0;i<900;i++){const v=Math.random()<.5?40:200;g.fillStyle='rgba('+v+','+(v-6)+',30,'+(Math.random()*.08)+')';g.fillRect(Math.random()*128,Math.random()*256,2,2)}
+for(let rr=0;rr<10;rr++)for(let k=0;k<4;k++){if(Math.random()<.12)continue;const x=10+k*29,y=10+rr*24;g.fillStyle=Math.random()<.2?'#4A443D':'#26221E';g.fillRect(x,y,16,13);g.fillStyle='rgba(255,255,255,.06)';g.fillRect(x,y+13,16,2)}
+for(let i=0;i<14;i++){g.fillStyle='rgba(30,24,18,.11)';g.fillRect(Math.random()*128,Math.random()*120,2+Math.random()*4,60+Math.random()*140)}
+const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;return t}
+const texF=fachada(),TINT=['#DCD3C6','#CBB9A4','#BCB3A8','#D0B69A','#C4BDB2'];
+function edificio(x,z,w,d,h){const g=new THREE.Group();const tx=texF.clone();tx.needsUpdate=true;tx.repeat.set(Math.max(1,w/8),Math.max(1,h/14));
+const mat=new THREE.MeshStandardMaterial({map:tx,color:TINT[Math.floor(Math.random()*TINT.length)],roughness:.95});
+const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);b.position.y=h/2;g.add(b);
+const n=1+Math.floor(Math.random()*3);for(let i=0;i<n;i++){const hw=w*(.3+Math.random()*.5),hh=1+Math.random()*h*.25,hd=d*(.3+Math.random()*.5);
+const q=new THREE.Mesh(new THREE.BoxGeometry(hw,hh,hd),mat);q.position.set((Math.random()-.5)*(w-hw),h+hh/2-.3,(Math.random()-.5)*(d-hd));q.rotation.z=(Math.random()-.5)*.28;q.rotation.x=(Math.random()-.5)*.16;g.add(q)}
+g.position.set(x,alt(x,z)-1,z);g.rotation.y=(Math.random()-.5)*.5;if(Math.random()<.15)g.rotation.z=(Math.random()-.5)*.18;
+g.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});S.add(g)}
+[-1,1].forEach(s=>{for(let j=0;j<30;j++){const z=-12-j*10-Math.random()*6;edificio(s*(13+Math.random()*24+j*.4),z,6+Math.random()*9,6+Math.random()*9,(5+Math.random()*30)*(j<3?.6:1))}
+for(let j=0;j<16;j++){edificio(s*(50+Math.random()*50),-40-j*22,10+Math.random()*12,10+Math.random()*12,20+Math.random()*45)}});
+const matR=new THREE.MeshStandardMaterial({color:'#6B6157',roughness:1});
+for(let i=0;i<170;i++){const s=.2+Math.random()*1.4,x=(Math.random()<.5?-1:1)*(4.2+Math.random()*12),z=4-Math.random()*200;
+const m=new THREE.Mesh(new THREE.BoxGeometry(s,s*.6,s*(.6+Math.random())),matR);m.position.set(x,alt(x,z)+s*.2,z);m.rotation.set(Math.random(),Math.random()*3,Math.random());m.castShadow=m.receiveShadow=true;S.add(m)}
+const matP=new THREE.MeshStandardMaterial({color:'#3D352D',roughness:.9});
+for(let i=0;i<16;i++){const g=new THREE.Group();const p=new THREE.Mesh(new THREE.CylinderGeometry(.1,.14,9,6),matP);p.position.y=4.5;g.add(p);
+const cb=new THREE.Mesh(new THREE.BoxGeometry(1.8,.12,.12),matP);cb.position.y=8.4;g.add(cb);g.position.set(i%2?6.5:-6.5,0,-4-i*14);
+g.rotation.z=(Math.random()-.5)*.35;g.rotation.x=(Math.random()-.5)*.2;g.traverse(o=>{if(o.isMesh)o.castShadow=true});S.add(g)}
+function auto(x,z,r){const g=new THREE.Group();const m=new THREE.MeshStandardMaterial({color:'#6E4B35',roughness:.8,metalness:.3});
+const b=new THREE.Mesh(new THREE.BoxGeometry(1.9,.7,4.2),m);b.position.y=.55;g.add(b);
+const c=new THREE.Mesh(new THREE.BoxGeometry(1.7,.6,2.1),m);c.position.set(0,1.15,-.2);g.add(c);
+const v=new THREE.Mesh(new THREE.BoxGeometry(1.74,.38,2.14),new THREE.MeshStandardMaterial({color:'#1D1C1B',roughness:.3}));v.position.set(0,1.2,-.2);g.add(v);
+g.position.set(x,0,z);g.rotation.y=r;g.rotation.z=.04;g.traverse(o=>{if(o.isMesh){o.castShadow=o.receiveShadow=true}});S.add(g)}
+auto(-2.8,-22,.35);auto(3,-58,-.8);auto(-3.4,-95,2.6);
+const T=new THREE.Group();T.position.set(26,0,-330);S.add(T);
+const matT=new THREE.MeshStandardMaterial({color:'#2D3134',roughness:.55,metalness:.5});
+const base=new THREE.Mesh(new THREE.CylinderGeometry(16,20,8,16),matT);base.position.y=4;T.add(base);
+const eje=new THREE.Mesh(new THREE.CylinderGeometry(3,9,190,12),matT);eje.position.y=95;T.add(eje);
+for(let k=0;k<4;k++){const f=new THREE.Mesh(new THREE.BoxGeometry(1.4,150,2.4),matT);const a=k*Math.PI/2;f.position.set(Math.cos(a)*6.4,78,Math.sin(a)*6.4);f.rotation.y=-a;T.add(f)}
+const anillos=[];[[40,11],[80,9],[120,7],[160,5.4]].forEach(([y,r])=>{const a=new THREE.Mesh(new THREE.TorusGeometry(r,.45,8,64),new THREE.MeshBasicMaterial({color:'#A6E8EC',transparent:true,opacity:.8,fog:false}));a.rotation.x=Math.PI/2;a.position.y=y;T.add(a);anillos.push(a)});
+const haz=new THREE.Mesh(new THREE.CylinderGeometry(.7,.7,900,8,1,true),new THREE.MeshBasicMaterial({color:'#C9F4F6',transparent:true,opacity:.26,fog:false,depthWrite:false}));haz.position.y=640;T.add(haz);
+{const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');const gr=g.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,64,64);
+const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),color:'#BFF2F4',transparent:true,blending:THREE.AdditiveBlending,fog:false,depthWrite:false}));sp.scale.set(70,70,1);sp.position.y=190;T.add(sp)}
+const yo=new THREE.Group();yo.position.set(4.3,0,1.2);S.add(yo);
+const mAbr=new THREE.MeshStandardMaterial({color:'#3B3631',roughness:.9}),mPan=new THREE.MeshStandardMaterial({color:'#2C2925',roughness:.9}),mMoc=new THREE.MeshStandardMaterial({color:'#4A4237',roughness:.85}),mPiel=new THREE.MeshStandardMaterial({color:'#8A6A52',roughness:.7});
+const pz=(geo,mat,x,y,z)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;yo.add(m);return m};
+pz(new THREE.CylinderGeometry(.085,.075,.82,8),mPan,-.1,.41,0);pz(new THREE.CylinderGeometry(.085,.075,.82,8),mPan,.1,.41,0);
+const abrigo=pz(new THREE.CylinderGeometry(.2,.31,.86,12),mAbr,0,1.14,0);
+const pecho=pz(new THREE.CylinderGeometry(.22,.2,.36,12),mAbr,0,1.56,0);
+pz(new THREE.SphereGeometry(.115,14,10),mPiel,0,1.83,-.02);
+pz(new THREE.SphereGeometry(.15,14,10,0,Math.PI*2,0,Math.PI*.62),mAbr,0,1.82,.03);
+pz(new THREE.BoxGeometry(.34,.44,.2),mMoc,0,1.45,.22);
+pz(new THREE.CylinderGeometry(.06,.055,.62,8),mAbr,-.28,1.3,0).rotation.z=.12;
+pz(new THREE.CylinderGeometry(.06,.055,.62,8),mAbr,.28,1.3,0).rotation.z=-.12;
+const mMet=new THREE.MeshStandardMaterial({color:'#4B4A46',roughness:.6,metalness:.6});
+const esc=new THREE.Group();esc.position.set(5.7,0,2.7);S.add(esc);
+const aro=new THREE.Mesh(new THREE.CylinderGeometry(.72,.78,.26,24),mMet);aro.position.y=.13;esc.add(aro);
+const hueco=new THREE.Mesh(new THREE.CircleGeometry(.6,24),new THREE.MeshBasicMaterial({color:'#2A1A0E'}));hueco.rotation.x=-Math.PI/2;hueco.position.y=.27;esc.add(hueco);
+const tapa=new THREE.Mesh(new THREE.CylinderGeometry(.72,.72,.08,24),mMet);tapa.position.set(0,.68,.74);tapa.rotation.x=1.75;esc.add(tapa);
+esc.traverse(o=>{if(o.isMesh){o.castShadow=o.receiveShadow=true}});
+const luzB=new THREE.PointLight(0xFFB36B,1.1,5,2);luzB.position.set(5.7,.35,2.7);S.add(luzB);
+const N=1600,pp=new Float32Array(N*3);for(let i=0;i<N;i++){pp[i*3]=(Math.random()-.5)*80;pp[i*3+1]=Math.random()*14;pp[i*3+2]=9-Math.random()*120}
+const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(pp,3));
+S.add(new THREE.Points(pg,new THREE.PointsMaterial({color:'#EAD7BC',size:.06,transparent:true,opacity:.55,depthWrite:false})));
+const P={inicio:{p:[2.4,1.8,6.6],l:[12,8,-160],f:42},carga:{p:[6.4,1.4,3.9],l:[4.3,1.4,1.0],f:34},torre:{p:[4,3,6],l:[26,100,-330],f:13}};
+let pan='inicio';const cp=new THREE.Vector3().fromArray(P.inicio.p),cl=new THREE.Vector3().fromArray(P.inicio.l),tp=new THREE.Vector3(),tl=new THREE.Vector3();let cf=P.inicio.f;
+const UI={
+inicio:`<div class="vin"></div>
+<div style="position:absolute;left:5.5%;top:9%"><div class="logo">NEXO</div><div class="eti" style="margin-top:6px">Capítulo 1 · La salida</div></div>
+<div style="position:absolute;left:4.5%;bottom:9%">
+<div class="it on"><i class="pt"></i>Continuar<span class="k">Cristal · 42 %</span></div>
+<div class="it">Nueva partida</div><div class="it">Registros<span class="k">2 / 12</span></div><div class="it">Ajustes</div></div>
+<div class="eti" style="position:absolute;right:4.5%;bottom:9%;text-align:right">Último guardado · hace 2 h</div>`,
+carga:`<div class="vin" style="background:rgba(20,16,12,.42)"></div>
+<div class="logo" style="position:absolute;left:5.5%;top:9%;font-size:18px">NEXO</div>
+<div class="panel" style="left:5.5%;bottom:10%;width:min(330px,54%);padding:14px 16px">
+<div class="eti">Registro 03 · Dra. Alba Ríos</div>
+<div style="font-size:14px;line-height:1.5;margin:6px 0 12px;color:#EDE6DA">“El portal no se cierra desde adentro. Alguien tiene que subir.”</div>
+<div style="height:3px;border-radius:2px;background:rgba(244,239,231,.16);overflow:hidden"><div id="fill" style="height:100%;width:0;background:#7FD6DC"></div></div>
+<div class="eti" style="display:flex;justify-content:space-between;margin-top:7px"><span>Abriendo portal · Cristal</span><span id="pct">0 %</span></div></div>
+<div style="position:absolute;right:4.5%;bottom:10%;width:28%;text-align:right"><div class="eti">Consejo</div><div style="font-size:13px;line-height:1.5;color:#E9E2D6;margin-top:4px">Desliza a los lados para esquivar los rayos de la Hidra.</div></div>`,
+torre:`<div class="vin" style="background:linear-gradient(90deg,rgba(20,16,12,.66),rgba(20,16,12,.05) 42%,rgba(20,16,12,.05) 60%,rgba(20,16,12,.6))"></div>
+<div class="panel" style="left:4.5%;top:9%;bottom:9%;width:31%;padding:12px 10px">
+<div class="eti" style="padding:0 4px 4px">La torre · 5 pisos</div>
+<div class="fila off"><i class="ti ti-lock"></i>Núcleo<span class="k">Sellado</span></div>
+<div class="fila off"><i class="ti ti-lock"></i>Vacío<span class="k">Sellado</span></div>
+<div class="fila off"><i class="ti ti-lock"></i>Magma<span class="k">Sellado</span></div>
+<div class="fila on"><i class="pt"></i>Cristal<span class="k">Actual</span></div>
+<div class="fila"><i class="ti ti-check"></i>Tierra baldía<span class="k">Completado</span></div></div>
+<div class="panel" style="right:4.5%;bottom:9%;width:31%;padding:13px 14px">
+<div class="eti">Piso 2 · Dimensión</div>
+<div class="logo" style="font-size:17px;letter-spacing:.3em;margin:6px 0 8px">CRISTAL</div>
+<div style="font-size:12px;line-height:1.8;color:#E2DACD">Jefe: Hidra de cristal<br>Registros: 1 de 4<br>Récord: 12.480</div>
+<div class="cta" style="margin-top:10px">Entrar al portal<i class="ti ti-arrow-right"></i></div></div>`};
+function mostrar(p){pan=p;capa.style.opacity=0;setTimeout(()=>{capa.innerHTML=UI[p];capa.style.opacity=1},280);
+document.querySelectorAll('[data-p]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.p===p))}
+document.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>mostrar(b.dataset.p));
+capa.innerHTML=UI.inicio;
+function tam(){const w=box.clientWidth,h=box.clientHeight;if(!w||!h)return;R.setSize(w,h,false);C.aspect=w/h;C.updateProjectionMatrix()}
+new ResizeObserver(tam).observe(box);tam();
+let t=0,ult=performance.now();
+function cuadro(ahora){const dt=Math.min(.05,(ahora-ult)/1000);ult=ahora;t+=dt;
+const pr=P[pan];tp.fromArray(pr.p);tl.fromArray(pr.l);const k=1-Math.exp(-dt*1.6);cp.lerp(tp,k);cl.lerp(tl,k);cf+=(pr.f-cf)*k;
+C.position.copy(cp);C.position.x+=Math.sin(t*.25)*.12;C.position.y+=Math.sin(t*.4)*.04;C.lookAt(cl);C.fov=cf;C.updateProjectionMatrix();
+anillos.forEach((a,i)=>{a.material.opacity=.45+.4*Math.sin(t*1.6+i*.9)});
+pecho.scale.set(1+Math.sin(t*1.8)*.015,1,1+Math.sin(t*1.8)*.015);abrigo.rotation.z=Math.sin(t*1.3)*.025;
+luzB.intensity=1+Math.sin(t*7)*.08+Math.sin(t*2.3)*.06;
+const a=pg.attributes.position.array;for(let i=0;i<N;i++){a[i*3]+=dt*(1.4+(i%7)*.15);a[i*3+1]+=Math.sin(t+i)*dt*.08;if(a[i*3]>40)a[i*3]-=80}pg.attributes.position.needsUpdate=true;
+if(pan==='carga'){const f=document.getElementById('fill'),q=document.getElementById('pct');if(f&&q){const ph=(t%3.4)/3.4,e=1-Math.pow(1-ph,3);f.style.width=(e*100).toFixed(1)+'%';q.textContent=Math.round(e*100)+' %'}}
+R.render(S,C);requestAnimationFrame(cuadro)}
+requestAnimationFrame(cuadro);
+})();
+</script>
+</body>
+</html>
