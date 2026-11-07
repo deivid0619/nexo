@@ -35,7 +35,7 @@ El corredor es provisional: el personaje final con ropa llega en la etapa 3. El 
 
 | Recurso | Autor | Enlace | Licencia |
 |---|---|---|---|
-| Tabler Icons 3.19.0 (lock, check, arrow-right, arrow-left, device-mobile-rotated) | Paweł Kuna | https://tabler.io/icons | MIT |
+| Tabler Icons 3.19.0 (lock, check, arrow-right, arrow-left, x, heart, device-mobile-rotated) | Paweł Kuna | https://tabler.io/icons | MIT |
 
 ## Prototipo (`prototipo/`)
 

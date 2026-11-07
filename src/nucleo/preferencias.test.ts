@@ -20,3 +20,14 @@ test('leerParametros: fallarCarga solo vale junto con el modo de prueba', () => 
   expect(leerParametros('?fallarCarga=1').fallarCarga).toBe(false);
   expect(leerParametros('?prueba=1').fallarCarga).toBe(false);
 });
+
+test('leerParametros: desde y dios solo valen junto con el modo de prueba', () => {
+  expect(leerParametros('?prueba=1&desde=80').desde).toBe(80);
+  expect(leerParametros('?desde=80').desde).toBeNull();
+  expect(leerParametros('?prueba=1').desde).toBeNull();
+  expect(leerParametros('?prueba=1&desde=abc').desde).toBeNull();
+  expect(leerParametros('?prueba=1&desde=-5').desde).toBeNull();
+  expect(leerParametros('?prueba=1&dios=1').dios).toBe(true);
+  expect(leerParametros('?dios=1').dios).toBe(false);
+  expect(leerParametros('?prueba=1').dios).toBe(false);
+});

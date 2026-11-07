@@ -9,17 +9,24 @@ export interface Parametros {
   calidad: NivelCalidad | null;
   /** Hace fallar la carga una vez para probar "Reintentar". Solo vale con ?prueba=1. */
   fallarCarga: boolean;
+  /** Metros desde donde empieza la carrera (?desde=80). Solo vale con ?prueba=1; null si no se pidió. */
+  desde: number | null;
+  /** La carrera no quita vidas (?dios=1). Solo vale con ?prueba=1. */
+  dios: boolean;
 }
 
 export function leerParametros(busqueda: string): Parametros {
   const p = new URLSearchParams(busqueda);
   const calidad = p.get('calidad');
   const prueba = p.get('prueba') === '1';
+  const desde = Number(p.get('desde') ?? NaN);
   return {
     prueba,
     fps: p.get('fps') === '1',
     calidad: NIVELES.includes(calidad as NivelCalidad) ? (calidad as NivelCalidad) : null,
     fallarCarga: prueba && p.get('fallarCarga') === '1',
+    desde: prueba && Number.isFinite(desde) && desde >= 0 ? desde : null,
+    dios: prueba && p.get('dios') === '1',
   };
 }
 

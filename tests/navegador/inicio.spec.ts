@@ -44,9 +44,9 @@ test('nueva partida con avance pide confirmación y Cancelar no borra', async ({
   await guardar(page, partida({ completados: ['tierra'], pisoActual: 'cristal' }));
   await abrir(page);
   await page.getByRole('button', { name: 'Nueva partida' }).click();
-  await expect(page.locator('.modal')).toContainText('¿Empezar de nuevo?');
+  await expect(page.getByRole('dialog')).toContainText('¿Empezar de nuevo?');
   await page.getByRole('button', { name: 'Cancelar' }).click();
-  await expect(page.locator('.modal')).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   const guardado = JSON.parse((await page.evaluate(() => localStorage.getItem('nexo.progreso')))!);
   expect(guardado.completados).toEqual(['tierra']);
 });
@@ -63,7 +63,7 @@ test('nueva partida confirmada borra el avance', async ({ page }) => {
 test('nueva partida sin avance no pregunta', async ({ page }) => {
   await abrir(page);
   await page.getByRole('button', { name: 'Nueva partida' }).click();
-  await expect(page.locator('.modal')).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem('nexo.progreso'))).not.toBeNull();
 });
 

@@ -1,6 +1,32 @@
 /** Todos los textos de NEXO. Están aparte del código para poder traducirlos después. */
 export const TEXTOS = {
-  juego: { nombre: 'NEXO', capitulo: 'Capítulo 1 · La salida' },
+  juego: {
+    nombre: 'NEXO',
+    capitulo: 'Capítulo 1 · La salida',
+    // La carrera
+    tramo: 'Tierra baldía · Tramo 1',
+    salir: 'Salir',
+    vidas: 'Vidas: {n} de {total}',
+    puntaje: 'Puntaje',
+    avance: 'Avance del tramo',
+    pistaSaltar: 'Toca para saltar',
+    pistaCarril: 'Desliza a los lados para cambiar de carril',
+    portal3d: 'Portal: ahora hay tres carriles',
+    portal2d: 'Portal: de vuelta a la vista lateral',
+    habilidades: {
+      escudo: 'Escudo: aguanta un golpe',
+      turbo: 'Turbo: rompe lo que tengas delante',
+      doble: 'Doble salto: salta otra vez en el aire',
+    },
+    escudoRoto: 'El escudo se rompió',
+    derrota: 'Sin vidas',
+    fin: 'Tramo superado',
+    record: 'Récord',
+    nuevoRecord: '¡Nuevo récord!',
+    reintentar: 'Reintentar',
+    repetir: 'Repetir',
+    volverMapa: 'Volver al mapa',
+  },
   carga: {
     etiqueta: 'Preparando el exterior',
     fraseInicial: {

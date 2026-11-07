@@ -1,4 +1,6 @@
 import type { Toma } from '../camara/tomas';
+import type { Intencion } from '../entrada/controles';
+import type { EstadoJuego } from '../juego/carrera';
 import type { Progreso } from '../guardado/progreso';
 import type { IdPantalla } from '../interfaz/gestor-pantallas';
 
@@ -33,6 +35,15 @@ export interface ApiPrueba {
   enTransicion(): boolean;
   /** Estado de la carga del arranque (una copia). */
   carga(): EstadoCarga;
+  /** La carrera en curso, o null fuera de la pantalla de juego. */
+  juego(): EstadoJuego | null;
+  /** Hace lo mismo que un toque o una tecla en la carrera. */
+  accion(a: Intencion): void;
+  /**
+   * Detiene (false) o reanuda (true) el bucle en tiempo real. Con el reloj detenido solo
+   * avanzar() mueve el juego: las pruebas ven siempre los mismos metros.
+   */
+  reloj(activo: boolean): void;
 }
 
 declare global {

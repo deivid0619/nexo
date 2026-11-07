@@ -1,11 +1,13 @@
 import type { IdToma } from '../camara/tomas';
 
-export type IdPantalla = 'carga' | 'inicio' | 'torre';
+export type IdPantalla = 'carga' | 'inicio' | 'torre' | 'juego';
 
 export interface Pantalla {
   id: IdPantalla;
-  /** La toma de cámara que acompaña a la pantalla. */
-  toma: IdToma;
+  /** La toma de la cámara del menú que acompaña a la pantalla; sin toma, la cámara no se mueve. */
+  toma?: IdToma;
+  /** Al entrar o salir de esta pantalla, el cambio va tapado con la cortina (cambia la escena). */
+  cortina?: boolean;
   /** Un `section.pantalla.pantalla-<id>`; el gestor lo pone dentro de la capa. */
   elemento: HTMLElement;
   alEntrar?(): void;
@@ -29,6 +31,8 @@ interface Dependencias {
   ventana: Window;
   /** Lo que dura cada mitad del cambio (sale la vieja, entra la nueva). */
   duracionMs: number;
+  /** Fundido a negro para los cambios de escena (pantallas con `cortina`). */
+  cortina?: { cubrir(): void; descubrir(): void };
 }
 
 /** Desde estas pantallas, "atrás" saldría del juego: no se hace nada. */
@@ -68,9 +72,11 @@ export function crearGestorPantallas(capa: HTMLElement, deps: Dependencias): Ges
       const nueva = pantallas.get(id);
       if (enCurso || !nueva || actual?.id === id) return false;
       const instantaneo = opciones.instantaneo ?? false;
-      camara.irA(nueva.toma, instantaneo);
+      if (nueva.toma) camara.irA(nueva.toma, instantaneo);
       if (opciones.apilar) historial.pushState({ pantalla: id }, '');
       const vieja = actual;
+      // La cortina tapa la primera mitad; el cambio de escena pasa en negro, a la mitad.
+      const tapar = !instantaneo && (nueva.cortina || vieja?.cortina) ? deps.cortina : undefined;
 
       if (instantaneo) {
         if (vieja) ocultar(vieja);
@@ -81,12 +87,14 @@ export function crearGestorPantallas(capa: HTMLElement, deps: Dependencias): Ges
 
       enCurso = true;
       vieja?.elemento.classList.add('saliendo');
+      tapar?.cubrir();
       setTimeout(() => {
         if (vieja) ocultar(vieja);
         actual = nueva;
         nueva.elemento.classList.add('entrando');
         // Se prepara en el mismo instante en que pasa a ser la actual: un toque rápido ya la encuentra lista.
         mostrar(nueva);
+        tapar?.descubrir();
         // El fundido de entrada arranca en el cuadro siguiente.
         ventana.requestAnimationFrame(() => nueva.elemento.classList.remove('entrando'));
       }, duracionMs);

@@ -1,4 +1,4 @@
-// Arranque de NEXO. Cada tarea de la etapa 1 conecta aquí sus piezas.
+// Arranque de NEXO. Cada etapa conecta aquí sus piezas.
 import './interfaz/tokens.css';
 import './interfaz/base.css';
 import './interfaz/componentes.css';
@@ -9,6 +9,14 @@ import { crearBucle } from './nucleo/bucle';
 import { crearTierraBaldia } from './mundo/tierra-baldia';
 import { leerParametros, movimientoReducido } from './nucleo/preferencias';
 import { crearCamaraMenu } from './camara/camara-menu';
+import { crearCamaraJuego } from './camara/camara-juego';
+import { crearPista } from './mundo/tierra-baldia/pista';
+import { TIERRA_BALDIA } from './mundo/paletas';
+import { cargarCorredor, type Corredor } from './entidades/corredor';
+import { crearControles } from './entrada/controles';
+import { crearCarrera, type Carrera } from './juego/carrera';
+import { TIERRA_BALDIA_1 } from './datos/niveles/tierra-baldia-1';
+import type { IdPiso } from './datos/pisos';
 import { instalarModoPrueba, type EstadoCarga } from './nucleo/modo-prueba';
 import { CALIDADES, elegirCalidad } from './render/calidad';
 import { crearRenderizador, ErrorSinWebGL, observarTamano, vigilarContexto } from './render/renderizador';
@@ -21,6 +29,8 @@ import { pedirConfirmacion } from './interfaz/confirmacion';
 import { crearPantallaCarga } from './interfaz/pantallas/carga';
 import { crearPantallaInicio } from './interfaz/pantallas/inicio';
 import { crearPantallaTorre } from './interfaz/pantallas/torre';
+import { crearPantallaJuego } from './interfaz/pantallas/juego';
+import { crearCortina } from './interfaz/cortina';
 import { almacenLocal } from './guardado/almacen';
 import { cargarProgreso, guardarProgreso, progresoInicial, tieneAvance } from './guardado/progreso';
 import { CARGA_MINIMA_MS, completarMinimo, ejecutarTareas, type Tarea } from './carga/cargador';
@@ -28,6 +38,12 @@ import { TEXTOS } from './textos/es';
 
 /** Semilla del mundo: sale igual en cada arranque. */
 const SEMILLA_MUNDO = 20261106;
+/** Semilla del decorado de la carrera (otra, para que sus ruinas no copien las del menú). */
+const SEMILLA_PISTA = 20261107;
+/** El corredor CC0 (Quaternius), servido desde public/. */
+const URL_CORREDOR = './modelos/corredor.glb';
+/** El piso de la carrera de esta etapa: su récord se guarda en el progreso. */
+const PISO_CARRERA: IdPiso = 'tierra';
 /** Lo que dura cada mitad del cambio de pantalla (igual a --d-pantalla en tokens.css). */
 const DURACION_PANTALLA_MS = 280;
 /** Si las fuentes tardan más que esto, la carga sale igual con las del sistema. */
@@ -92,7 +108,8 @@ async function arrancar(): Promise<void> {
   const lienzo = document.getElementById('lienzo') as HTMLCanvasElement;
   const capa = document.getElementById('capa') as HTMLElement;
   const velo = crearVeloSistema(document.body);
-  crearAvisoGirar(document.body);
+  const girar = crearAvisoGirar(document.body);
+  const cortina = crearCortina(document.body);
 
   // 1. Las fuentes primero, para que la carga no cambie de letra a la vista.
   await esperarFuentes();
@@ -114,9 +131,18 @@ async function arrancar(): Promise<void> {
   const camara = new PerspectiveCamera(42, 2, 0.1, 2200);
   const camaraMenu = crearCamaraMenu(camara, { movimientoReducido });
 
+  // La carrera: otra escena y otra cámara con el mismo renderizador.
+  const pista = crearPista(calidad, crearAzar(SEMILLA_PISTA));
+  const camaraCarrera = new PerspectiveCamera(62, 2, 0.1, 2200);
+  const camaraJuego = crearCamaraJuego(camaraCarrera, { movimientoReducido: movimientoReducido() });
+  let aspecto = 2;
+
   observarTamano(renderer, (ancho, alto) => {
-    camara.aspect = ancho / alto;
+    aspecto = ancho / alto;
+    camara.aspect = aspecto;
     camara.updateProjectionMatrix();
+    camaraCarrera.aspect = aspecto;
+    camaraCarrera.updateProjectionMatrix();
   });
 
   // Progreso guardado en este dispositivo.
@@ -129,6 +155,7 @@ async function arrancar(): Promise<void> {
     historial: history,
     ventana: window,
     duracionMs: DURACION_PANTALLA_MS,
+    cortina,
   });
 
   const consejos = TEXTOS.carga.consejos;
@@ -163,8 +190,11 @@ async function arrancar(): Promise<void> {
   const torre = crearPantallaTorre({
     estado: () => estado,
     avisos,
-    // El juego llega en la etapa 2: por ahora el portal solo avisa.
-    alEntrarPortal: () => avisos.mostrar(TEXTOS.torre.portalPronto),
+    // Solo la Tierra baldía tiene carrera en esta etapa; los demás portales avisan.
+    alEntrarPortal(id) {
+      if (id === PISO_CARRERA) gestor.ir('juego', { apilar: true });
+      else avisos.mostrar(TEXTOS.torre.portalPronto);
+    },
     alResaltar(indice) {
       resaltado = indice;
       mundo.resaltarPiso(indice);
@@ -173,21 +203,92 @@ async function arrancar(): Promise<void> {
   });
   const refrescables = [inicio, torre];
 
+  // La carrera se arma al terminar la carga (necesita el corredor); hasta entonces no hay portal.
+  let carrera: Carrera | null = null;
+  const juego = crearPantallaJuego({
+    alAbrir() {
+      carrera?.empezar();
+      controles.activar();
+    },
+    alCerrar() {
+      controles.desactivar();
+      carrera?.detener();
+    },
+    alReintentar() {
+      carrera?.empezar();
+      controles.activar();
+    },
+    alVolver: () => gestor.atras(),
+  });
+  const controles = crearControles(juego.superficie, window, (i) => carrera?.accion(i));
+
+  /** Guarda el puntaje si supera el récord del piso y repinta las pantallas. */
+  function guardarRecord(puntaje: number): { record: number; nuevo: boolean } {
+    const antes = estado.progreso.records[PISO_CARRERA];
+    if (antes !== undefined && antes >= puntaje) return { record: antes, nuevo: false };
+    const ahora = Date.now();
+    const records = { ...estado.progreso.records, [PISO_CARRERA]: puntaje };
+    const progreso = { ...estado.progreso, records, guardadoEn: ahora };
+    guardarProgreso(almacen, progreso, ahora);
+    estado = { progreso, existia: true };
+    for (const p of refrescables) p.refrescar();
+    return { record: puntaje, nuevo: true };
+  }
+
+  function armarCarrera(corredor: Corredor): Carrera {
+    return crearCarrera({
+      nivel: TIERRA_BALDIA_1,
+      opciones: { desde: parametros.desde ?? undefined, sinDanio: parametros.dios },
+      corredor,
+      camara: camaraJuego,
+      pista,
+      hud: {
+        reiniciar: () => juego.reiniciar(),
+        actualizar: (d) => juego.actualizar(d),
+        pista: (cual) => juego.pista(cual),
+        terminar(r) {
+          controles.desactivar();
+          juego.terminar(r);
+        },
+      },
+      avisos,
+      vibrar(ms) {
+        // Sin un toque o una tecla antes, Chrome bloquea la vibración y lo anota como error en la consola.
+        if ('vibrate' in navigator && navigator.userActivation?.hasBeenActive) navigator.vibrate(ms);
+      },
+      guardarRecord,
+    });
+  }
+
   // 3. La carga en pantalla, con la cámara en su toma y la escena todavía oculta (opacidad 0 en base.css).
   gestor.registrar(carga);
   gestor.registrar(inicio);
   gestor.registrar(torre);
+  gestor.registrar(juego);
   gestor.ir('carga', { instantaneo: true });
   const inicioCarga = performance.now();
 
   const medidor = parametros.fps ? crearMedidor(renderer, document.body) : null;
+  /** Dibuja la escena activa: la de la carrera o la del menú. */
+  const dibujar = () =>
+    carrera?.activa() ? renderer.render(pista.escena, camaraCarrera) : renderer.render(escena, camara);
+  /** avanzar() del modo de prueba lo apaga para dibujar solo el último de sus pasos. */
+  let dibujarCadaPaso = true;
   const bucle = crearBucle((dt, t) => {
-    camaraMenu.actualizar(dt, t);
-    mundo.actualizar(dt, t);
-    renderer.render(escena, camara);
+    if (carrera?.activa()) {
+      // Pestaña oculta o celular en vertical: la carrera espera. Se lee antes de tocar el HUD.
+      const enPausa = document.visibilityState === 'hidden' || girar.visible();
+      if (!enPausa) carrera.paso(dt, t, aspecto);
+    } else {
+      camaraMenu.actualizar(dt, t);
+      mundo.actualizar(dt, t);
+    }
+    if (dibujarCadaPaso) dibujar();
     medidor?.actualizar(dt);
   });
   let revelado = false;
+  /** Con ?prueba=1 las pruebas pueden detener el tiempo real (reloj(false)). */
+  let relojActivo = true;
 
   vigilarContexto(
     lienzo,
@@ -197,7 +298,7 @@ async function arrancar(): Promise<void> {
     },
     () => {
       velo.ocultar();
-      if (revelado) bucle.iniciar();
+      if (revelado && relojActivo) bucle.iniciar();
     },
   );
 
@@ -205,11 +306,21 @@ async function arrancar(): Promise<void> {
 
   if (parametros.prueba) {
     instalarModoPrueba({
-      avanzar: (segundos) => bucle.avanzar(segundos),
+      // Cientos de cuadros dibujados de golpe dejan la página sin pintar durante segundos
+      // (WebGL por software en las pruebas): se simulan todos y se dibuja solo el último.
+      avanzar(segundos) {
+        dibujarCadaPaso = false;
+        try {
+          bucle.avanzar(segundos);
+        } finally {
+          dibujarCadaPaso = true;
+        }
+        dibujar();
+      },
       camara: () => camaraMenu.estado(),
       render: () => ({ llamadas: renderer.info.render.calls, triangulos: renderer.info.render.triangles }),
       pantalla: () => gestor.actual(),
-      ir: (id) => gestor.ir(id, { apilar: id === 'torre' }),
+      ir: (id) => gestor.ir(id, { apilar: id === 'torre' || id === 'juego' }),
       resaltado: () => resaltado,
       enTransicion: () => gestor.enTransicion(),
       progreso(cambios) {
@@ -222,13 +333,37 @@ async function arrancar(): Promise<void> {
         return estado.progreso;
       },
       carga: () => ({ ...registroCarga, fracciones: [...registroCarga.fracciones] }),
+      juego: () => carrera?.estado() ?? null,
+      accion: (a) => carrera?.accion(a),
+      reloj(activo) {
+        relojActivo = activo;
+        if (!activo) bucle.detener();
+        else if (revelado) bucle.iniciar();
+      },
     });
   }
 
-  // 4. Construir el mundo, compilar los sombreadores y dibujar el primer cuadro, con avance real.
+  // 4. Construir el mundo y la carrera, compilar los sombreadores y dibujar el primer cuadro, con avance real.
+  let corredor: Corredor | null = null;
   const tareas: Tarea[] = [
     ...(parametros.fallarCarga ? conFalloDePrueba(mundo.pasos) : mundo.pasos),
-    { nombre: 'sombreadores', peso: 4, correr: () => renderer.compileAsync(escena, camara) },
+    ...pista.pasos,
+    {
+      nombre: 'corredor',
+      peso: 3,
+      async correr() {
+        corredor = await cargarCorredor(URL_CORREDOR, TIERRA_BALDIA);
+        pista.escena.add(corredor.grupo);
+      },
+    },
+    {
+      nombre: 'sombreadores',
+      peso: 5,
+      async correr() {
+        await renderer.compileAsync(escena, camara);
+        await renderer.compileAsync(pista.escena, camaraCarrera);
+      },
+    },
     { nombre: 'primer-cuadro', peso: 1, correr: () => renderer.render(escena, camara) },
   ];
   try {
@@ -251,11 +386,12 @@ async function arrancar(): Promise<void> {
   // 5. Un mínimo en pantalla para que la carga no parpadee.
   registroCarga.duracionMs = await completarMinimo(inicioCarga, CARGA_MINIMA_MS, () => performance.now(), esperar);
   registroCarga.estado = 'lista';
+  carrera = armarCarrera(corredor!);
 
   // 6. Revelar: la escena aparece mientras la cámara viaja de la carga al inicio.
   revelado = true;
   lienzo.classList.add('revelado');
-  bucle.iniciar();
+  if (relojActivo) bucle.iniciar();
   gestor.ir('inicio');
   history.replaceState({ pantalla: 'inicio' }, '');
 }

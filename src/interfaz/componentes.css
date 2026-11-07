@@ -405,6 +405,114 @@
   .girar svg { animation: none; }
 }
 
+/* La carrera: el HUD va en las esquinas y deja libre el centro para el corredor. */
+.velo-juego {
+  position: absolute;
+  inset: 0;
+  background: var(--v-juego);
+  pointer-events: none;
+}
+/* Toda la pantalla se toca para jugar; sin gestos del navegador (los deslizamientos son del juego). */
+.superficie-juego {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+}
+.hud-estado {
+  position: absolute;
+  top: var(--borde-arriba);
+  left: var(--borde-izq);
+  display: flex;
+  align-items: center;
+  gap: var(--e-3);
+  pointer-events: none;
+}
+.boton-icono {
+  display: inline-grid;
+  place-items: center;
+  width: var(--alto-toque);
+  height: var(--alto-toque);
+  border: 1px solid var(--c-borde);
+  border-radius: var(--r-item);
+  background: var(--c-panel);
+  font-size: var(--t-vida);
+  color: var(--c-texto);
+  pointer-events: auto;
+  transition: transform var(--d-toque) ease;
+}
+.boton-icono:active { transform: scale(var(--escala-toque)); }
+.vidas {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  box-sizing: border-box;
+  min-height: var(--alto-toque);
+  padding: 0 var(--e-4);
+  font-size: var(--t-vida);
+  color: var(--c-apagado);
+}
+.vida { display: inline-flex; }
+.vida.llena { color: var(--c-claro); }
+.vida.llena svg { fill: currentColor; }
+.hud-puntaje {
+  position: absolute;
+  top: var(--borde-arriba);
+  right: var(--borde-der);
+  box-sizing: border-box;
+  width: var(--ancho-hud);
+  padding: var(--e-3) var(--e-5) var(--e-4);
+  text-align: right;
+  pointer-events: none;
+}
+.puntaje {
+  font-family: var(--f-etiqueta);
+  font-weight: 600;
+  font-size: var(--t-puntaje);
+  line-height: 1.1;
+  letter-spacing: var(--l-pista);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-texto);
+}
+.hud-puntaje .barra { margin-top: var(--e-2); }
+.pista-juego {
+  position: absolute;
+  left: 50%;
+  bottom: var(--borde-abajo);
+  margin: 0;
+  padding: var(--e-3) var(--e-6);
+  transform: translateX(-50%);
+  font-family: var(--f-etiqueta);
+  font-weight: 600;
+  font-size: var(--t-etiqueta);
+  letter-spacing: var(--l-etiqueta);
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--c-etiqueta);
+  pointer-events: none;
+}
+.fin-carrera .titulo { margin: var(--e-3) 0; }
+.fin-carrera .detalle { margin-bottom: var(--e-6); }
+.fin-carrera .cta { justify-content: center; }
+
+/* Cortina: fundido a negro entre la escena del menú y la de la carrera. Llega al negro
+   un poco antes de la mitad del cambio, para que el cambio de escena nunca se vea. */
+.cortina {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  background: var(--c-fondo);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity calc(var(--d-pantalla) * .8) ease;
+}
+.cortina.cubierta {
+  opacity: 1;
+  pointer-events: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cortina { transition: none; }
+}
+
 /* Mensajes del sistema (sin WebGL, contexto perdido) */
 .velo-sistema {
   position: fixed;

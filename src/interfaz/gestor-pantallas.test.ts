@@ -185,3 +185,51 @@ test('Escape sostenido (tecla repetida) no vuelve atrás', () => {
   ventana.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', repeat: true }));
   expect(historial.back).not.toHaveBeenCalled();
 });
+
+test('una pantalla sin toma no mueve la cámara del menú', () => {
+  g.registrar({ id: 'juego', elemento: seccion('juego') });
+  g.ir('inicio', { instantaneo: true });
+  camara.irA.mockClear();
+  g.ir('juego');
+  vi.advanceTimersByTime(560);
+  expect(g.actual()).toBe('juego');
+  expect(camara.irA).not.toHaveBeenCalled();
+});
+
+test('con cortina: tapa al empezar, cambia de pantalla tapado y destapa después', () => {
+  const cortina = { cubrir: vi.fn(), descubrir: vi.fn() };
+  const g2 = crearGestorPantallas(capa, { camara, historial, ventana, duracionMs: 280, cortina });
+  const alEntrarJuego = vi.fn(() => expect(cortina.descubrir).not.toHaveBeenCalled());
+  const alSalirJuego = vi.fn(() => expect(cortina.descubrir).toHaveBeenCalledTimes(1));
+  g2.registrar({ id: 'torre', toma: 'torre', elemento: seccion('torre') });
+  g2.registrar({ id: 'juego', elemento: seccion('juego'), cortina: true, alEntrar: alEntrarJuego, alSalir: alSalirJuego });
+  g2.ir('torre', { instantaneo: true });
+  expect(cortina.cubrir).not.toHaveBeenCalled();
+
+  g2.ir('juego', { apilar: true });
+  expect(cortina.cubrir).toHaveBeenCalledTimes(1);
+  vi.advanceTimersByTime(280);
+  expect(alEntrarJuego).toHaveBeenCalledTimes(1);
+  expect(cortina.descubrir).toHaveBeenCalledTimes(1);
+  vi.advanceTimersByTime(280);
+  expect(g2.enTransicion()).toBe(false);
+
+  // Salir de una pantalla con cortina también va tapado.
+  g2.ir('torre');
+  expect(cortina.cubrir).toHaveBeenCalledTimes(2);
+  vi.advanceTimersByTime(280);
+  expect(alSalirJuego).toHaveBeenCalledTimes(1);
+  expect(cortina.descubrir).toHaveBeenCalledTimes(2);
+});
+
+test('entre pantallas sin cortina no se tapa nada', () => {
+  const cortina = { cubrir: vi.fn(), descubrir: vi.fn() };
+  const g2 = crearGestorPantallas(capa, { camara, historial, ventana, duracionMs: 280, cortina });
+  g2.registrar({ id: 'inicio', toma: 'inicio', elemento: seccion('inicio') });
+  g2.registrar({ id: 'torre', toma: 'torre', elemento: seccion('torre') });
+  g2.ir('inicio', { instantaneo: true });
+  g2.ir('torre');
+  vi.advanceTimersByTime(560);
+  expect(cortina.cubrir).not.toHaveBeenCalled();
+  expect(cortina.descubrir).not.toHaveBeenCalled();
+});
