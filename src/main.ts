@@ -14,16 +14,27 @@ import { CALIDADES, elegirCalidad } from './render/calidad';
 import { crearRenderizador, ErrorSinWebGL, observarTamano, vigilarContexto } from './render/renderizador';
 import { crearMedidor } from './render/medidor';
 import { crearVeloSistema } from './interfaz/velo-sistema';
+import { crearGestorPantallas } from './interfaz/gestor-pantallas';
+import { crearAvisos } from './interfaz/aviso';
+import { crearAvisoGirar } from './interfaz/girar';
+import { pedirConfirmacion } from './interfaz/confirmacion';
+import { crearPantallaInicio } from './interfaz/pantallas/inicio';
+import { almacenLocal } from './guardado/almacen';
+import { cargarProgreso, guardarProgreso, progresoInicial, tieneAvance } from './guardado/progreso';
 import { TEXTOS } from './textos/es';
 
 /** Semilla del mundo: sale igual en cada arranque. */
 const SEMILLA_MUNDO = 20261106;
+/** Lo que dura cada mitad del cambio de pantalla (igual a --d-pantalla en tokens.css). */
+const DURACION_PANTALLA_MS = 280;
 
 function arrancar(): void {
   const parametros = leerParametros(location.search);
   const calidad = CALIDADES[elegirCalidad(parametros.calidad)];
   const lienzo = document.getElementById('lienzo') as HTMLCanvasElement;
+  const capa = document.getElementById('capa') as HTMLElement;
   const velo = crearVeloSistema(document.body);
+  crearAvisoGirar(document.body);
 
   let renderer: WebGLRenderer;
   try {
@@ -48,6 +59,45 @@ function arrancar(): void {
     camara.aspect = ancho / alto;
     camara.updateProjectionMatrix();
   });
+
+  // Progreso guardado en este dispositivo.
+  const almacen = almacenLocal();
+  let estado = cargarProgreso(almacen, Date.now());
+
+  const avisos = crearAvisos(capa);
+  const gestor = crearGestorPantallas(capa, {
+    camara: camaraMenu,
+    historial: history,
+    ventana: window,
+    duracionMs: DURACION_PANTALLA_MS,
+  });
+
+  // En esta tarea "Continuar" todavía no lleva a ningún lado; la Tarea 11 abre el mapa de la torre.
+  const alContinuar = () => avisos.mostrar(TEXTOS.pronto);
+
+  const inicio = crearPantallaInicio({
+    estado: () => estado,
+    ahora: () => Date.now(),
+    alContinuar,
+    async alNuevaPartida() {
+      if (estado.existia && tieneAvance(estado.progreso)) {
+        const seguir = await pedirConfirmacion(capa, TEXTOS.confirmarNueva);
+        if (!seguir) return;
+      }
+      const ahora = Date.now();
+      const progreso = progresoInicial(ahora);
+      guardarProgreso(almacen, progreso, ahora);
+      estado = { progreso, existia: true };
+      inicio.refrescar();
+      alContinuar();
+    },
+    avisos,
+  });
+  const refrescables = [inicio];
+
+  gestor.registrar(inicio);
+  gestor.ir('inicio', { instantaneo: true });
+  history.replaceState({ pantalla: 'inicio' }, '');
 
   const medidor = parametros.fps ? crearMedidor(renderer, document.body) : null;
   const bucle = crearBucle((dt, t) => {
@@ -75,6 +125,17 @@ function arrancar(): void {
       avanzar: (segundos) => bucle.avanzar(segundos),
       camara: () => camaraMenu.estado(),
       render: () => ({ llamadas: renderer.info.render.calls, triangulos: renderer.info.render.triangles }),
+      pantalla: () => gestor.actual(),
+      ir: (id) => gestor.ir(id),
+      progreso(cambios) {
+        if (cambios) {
+          const progreso = { ...estado.progreso, ...cambios };
+          guardarProgreso(almacen, progreso, progreso.guardadoEn);
+          estado = { progreso, existia: true };
+          for (const p of refrescables) p.refrescar();
+        }
+        return estado.progreso;
+      },
     });
   }
 }

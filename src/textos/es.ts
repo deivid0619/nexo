@@ -24,6 +24,7 @@ export const TEXTOS = {
     registros: 'Registros',
     ajustes: 'Ajustes',
     ultimoGuardado: 'Último guardado',
+    menu: 'Menú principal',
   },
   confirmarNueva: {
     titulo: '¿Empezar de nuevo?',

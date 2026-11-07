@@ -45,3 +45,11 @@ export async function colorPromedio(png: Buffer, desde = 0, hasta = 1): Promise<
   }
   return [total[0] / n, total[1] / n, total[2] / n];
 }
+
+/** Abre el juego en modo prueba (calidad baja, más rápido) y espera a que el inicio esté en pantalla. */
+export async function abrir(page: Page, consulta = ''): Promise<string[]> {
+  const errores = recogerErrores(page);
+  await page.goto(`/?prueba=1&calidad=bajo${consulta}`);
+  await page.waitForFunction(() => window.nexo?.pantalla() === 'inicio', undefined, { timeout: 30_000 });
+  return errores;
+}

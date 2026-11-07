@@ -73,6 +73,27 @@
   gap: var(--e-1);
 }
 
+/* Pantalla de inicio: el logo arriba a la izquierda, el menú abajo a la izquierda,
+   el último guardado abajo a la derecha. El centro queda libre para el personaje y la torre. */
+.inicio-marca {
+  position: absolute;
+  top: var(--borde-arriba);
+  left: calc(var(--borde-izq) + var(--e-5));
+}
+.inicio-marca .logo { margin: 0; }
+.inicio-marca .etiqueta { margin-top: var(--e-3); }
+.inicio-menu {
+  position: absolute;
+  left: var(--borde-izq);
+  bottom: var(--borde-abajo);
+}
+.inicio-guardado {
+  position: absolute;
+  right: var(--borde-der);
+  bottom: var(--borde-abajo);
+  text-align: right;
+}
+
 .item,
 .fila {
   display: flex;
