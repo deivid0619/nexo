@@ -10,7 +10,9 @@
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "test:navegador": "playwright test",
-    "verificar": "npm test && npm run test:navegador"
+    "verificar": "npm test && npm run test:navegador",
+    "sitio": "npm run build && node scripts/armar-sitio.mjs",
+    "sitio:servir": "vite preview --outDir _site"
   },
   "dependencies": {
     "@fontsource/barlow": "^5.3.0",

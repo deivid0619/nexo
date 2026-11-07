@@ -25,3 +25,12 @@ Las fuentes se incluyen con los paquetes de Fontsource (https://fontsource.org).
 | Recurso | Autor | Enlace | Licencia |
 |---|---|---|---|
 | Tabler Icons 3.19.0 (lock, check, arrow-right, arrow-left, device-mobile-rotated) | Paweł Kuna | https://tabler.io/icons | MIT |
+
+## Prototipo (`prototipo/`)
+
+El prototipo no incluye estos archivos: los carga de un CDN al abrirse.
+
+| Recurso | Autor | Enlace | Licencia |
+|---|---|---|---|
+| three.js 0.160.0 (por jsDelivr) | three.js authors | https://github.com/mrdoob/three.js | MIT |
+| Chakra Petch (por Google Fonts) | Cadson Demak | https://fonts.google.com/specimen/Chakra+Petch | OFL-1.1 |
