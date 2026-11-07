@@ -69,6 +69,8 @@
   --r-item: 6px;
   --ancho-menu: 14.7rem;
   --ancho-panel: 31vw;
+  --ancho-carga: min(23.5rem, 54vw);
+  --ancho-consejo: 28vw;
   --alto-toque: 44px;
 
   /* Movimiento */

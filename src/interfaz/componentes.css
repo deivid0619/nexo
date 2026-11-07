@@ -129,6 +129,62 @@
   right: var(--borde-der);
 }
 
+/* Carga del arranque: el logo arriba, la frase y la barra abajo a la izquierda,
+   el consejo abajo a la derecha. Va sobre el fondo oscuro mientras se arma la escena. */
+.carga-logo {
+  position: absolute;
+  top: var(--borde-arriba);
+  left: calc(var(--borde-izq) + var(--e-5));
+  margin: 0;
+}
+.carga-panel {
+  position: absolute;
+  left: calc(var(--borde-izq) + var(--e-5));
+  bottom: var(--borde-abajo);
+  width: var(--ancho-carga);
+  padding: var(--e-6);
+}
+.carga-frase {
+  margin: var(--e-3) 0 var(--e-5);
+  font-size: var(--t-texto);
+  line-height: 1.5;
+  color: var(--c-texto-frase);
+}
+.carga-estado {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--e-5);
+  margin-top: var(--e-3);
+}
+.carga-estado.con-error [role='alert'] {
+  font-family: var(--f-texto);
+  font-weight: 500;
+  font-size: var(--t-fila);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--c-texto);
+}
+.carga-estado.con-error .cta {
+  flex: none;
+  letter-spacing: normal;
+}
+.carga-consejo {
+  position: absolute;
+  right: var(--borde-der);
+  bottom: var(--borde-abajo);
+  width: var(--ancho-consejo);
+  text-align: right;
+}
+.carga-consejo p {
+  margin: var(--e-2) 0 0;
+  /* Líneas parejas: que no quede una palabra sola abajo. */
+  text-wrap: balance;
+  font-size: var(--t-fila);
+  line-height: 1.5;
+  color: var(--c-texto-detalle);
+}
+
 .item,
 .fila {
   display: flex;

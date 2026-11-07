@@ -14,3 +14,9 @@ test('leerParametros: calidad y fps', () => {
   expect(leerParametros('?fps=1').fps).toBe(true);
   expect(leerParametros('').fps).toBe(false);
 });
+
+test('leerParametros: fallarCarga solo vale junto con el modo de prueba', () => {
+  expect(leerParametros('?prueba=1&fallarCarga=1').fallarCarga).toBe(true);
+  expect(leerParametros('?fallarCarga=1').fallarCarga).toBe(false);
+  expect(leerParametros('?prueba=1').fallarCarga).toBe(false);
+});

@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { recogerErrores, varianzaLienzo } from './ayudas';
+import { esperarInicio, recogerErrores, varianzaLienzo } from './ayudas';
 
 test('escena completa dentro del tope de llamadas', async ({ page }) => {
   const errores = recogerErrores(page);
   await page.goto('/?prueba=1&calidad=alto');
-  await page.waitForFunction(() => window.nexo);
+  await esperarInicio(page);
   await page.evaluate(() => window.nexo!.avanzar(0.5));
   const r = await page.evaluate(() => window.nexo!.render());
   console.log(`llamadas de dibujo: ${r.llamadas}, triángulos: ${r.triangulos}`);

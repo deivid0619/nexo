@@ -2,6 +2,14 @@ import type { Toma } from '../camara/tomas';
 import type { Progreso } from '../guardado/progreso';
 import type { IdPantalla } from '../interfaz/gestor-pantallas';
 
+/** Cómo va la carga del arranque: las fracciones que se avisaron y lo que duró en pantalla. */
+export interface EstadoCarga {
+  estado: 'cargando' | 'lista' | 'error';
+  fracciones: number[];
+  /** Desde que se vio la carga hasta el revelado; 0 mientras no termina. */
+  duracionMs: number;
+}
+
 /**
  * Ganchos para probar sin jugar desde el principio. Solo existen con ?prueba=1.
  * Cada tarea de la etapa agrega aquí sus miembros.
@@ -13,7 +21,7 @@ export interface ApiPrueba {
   camara(): Toma;
   /** Llamadas de dibujo y triángulos del último cuadro, con la pasada de sombras. */
   render(): { llamadas: number; triangulos: number };
-  /** Pantalla que se ve ahora (null mientras arranca). */
+  /** Pantalla que se ve ahora ('carga' mientras arranca). */
   pantalla(): IdPantalla | null;
   /** Navega como lo haría la interfaz; false si no se pudo (ya estaba o hay un cambio en curso). */
   ir(id: IdPantalla): boolean;
@@ -23,6 +31,8 @@ export interface ApiPrueba {
   resaltado(): number | null;
   /** True mientras una pantalla sale y otra entra. */
   enTransicion(): boolean;
+  /** Estado de la carga del arranque (una copia). */
+  carga(): EstadoCarga;
 }
 
 declare global {

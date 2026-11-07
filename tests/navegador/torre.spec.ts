@@ -12,12 +12,19 @@ const P = {
 
 const pantalla = (page: Page) => page.evaluate(() => window.nexo!.pantalla());
 
+/**
+ * Espera a que la pantalla sea `id` y a que termine el cambio: `pantalla()` cambia a mitad
+ * del fundido, y mientras dura la interfaz no navega (un toque ahí se ignora).
+ */
+const llegar = (page: Page, id: string) =>
+  expect.poll(() => page.evaluate(() => !window.nexo!.enTransicion() && window.nexo!.pantalla())).toBe(id);
+
 /** Abre el juego con una partida en Cristal y entra al mapa por "Continuar". */
 async function abrirTorre(page: Page): Promise<string[]> {
   await page.addInitScript((v) => localStorage.setItem('nexo.progreso', v), JSON.stringify(P));
   const errores = await abrir(page);
   await page.getByRole('button', { name: /Continuar/ }).click();
-  await expect.poll(() => pantalla(page)).toBe('torre');
+  await llegar(page, 'torre');
   return errores;
 }
 
@@ -78,19 +85,18 @@ test('Entrar al portal muestra que llega en la próxima etapa', async ({ page })
 test('Volver, atrás del navegador y Escape regresan al inicio', async ({ page }) => {
   await abrirTorre(page);
   await page.getByRole('button', { name: 'Volver' }).click();
-  await expect.poll(() => pantalla(page)).toBe('inicio');
+  await llegar(page, 'inicio');
   expect(await page.evaluate(() => window.nexo!.resaltado())).toBeNull();
 
   await page.getByRole('button', { name: /Continuar/ }).click();
-  await expect.poll(() => pantalla(page)).toBe('torre');
+  await llegar(page, 'torre');
   await page.goBack();
-  await expect.poll(() => pantalla(page)).toBe('inicio');
+  await llegar(page, 'inicio');
 
   await page.getByRole('button', { name: /Continuar/ }).click();
-  await expect.poll(() => pantalla(page)).toBe('torre');
-  await expect.poll(() => page.evaluate(() => window.nexo!.enTransicion())).toBe(false);
+  await llegar(page, 'torre');
   await page.keyboard.press('Escape');
-  await expect.poll(() => pantalla(page)).toBe('inicio');
+  await llegar(page, 'inicio');
 });
 
 test('doble toque en Continuar navega una sola vez', async ({ page }) => {

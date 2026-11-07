@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { colorPromedio } from './ayudas';
+import { colorPromedio, esperarInicio } from './ayudas';
 
 /** La maqueta pone los edificios al azar en cada carga: se promedian varias para comparar contra algo estable. */
 const CARGAS_MAQUETA = 3;
@@ -31,7 +31,7 @@ test('@paridad la escena se ve como la maqueta aprobada', async ({ page }) => {
 
   await page.setViewportSize({ width: Math.round(caja.width), height: Math.round(caja.height) });
   await page.goto('/?prueba=1&calidad=alto');
-  await page.waitForFunction(() => window.nexo);
+  await esperarInicio(page);
   // Solo la escena: sin el menú ni su velo, igual que en la maqueta.
   await page.evaluate(() => (document.getElementById('capa')!.style.display = 'none'));
   await page.evaluate(() => window.nexo!.avanzar(1));

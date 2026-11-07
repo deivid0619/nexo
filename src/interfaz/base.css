@@ -35,7 +35,12 @@ body {
   display: block;
   width: 100%;
   height: 100%;
+  /* Oculto mientras se construye la escena; aparece al terminar la carga. */
+  opacity: 0;
   transition: opacity var(--d-revelar) ease;
+}
+#lienzo.revelado {
+  opacity: 1;
 }
 
 /* Bordes seguros: la isla dinámica y las esquinas redondeadas nunca tapan la interfaz. */

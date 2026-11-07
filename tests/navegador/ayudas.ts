@@ -46,10 +46,25 @@ export async function colorPromedio(png: Buffer, desde = 0, hasta = 1): Promise<
   return [total[0] / n, total[1] / n, total[2] / n];
 }
 
-/** Abre el juego en modo prueba (calidad baja, más rápido) y espera a que el inicio esté en pantalla. */
+/**
+ * Espera a que termine el arranque: el inicio en pantalla, sin cambio en curso
+ * (mientras dura no se puede navegar) y la escena ya revelada del todo.
+ */
+export async function esperarInicio(page: Page): Promise<void> {
+  await page.waitForFunction(
+    () =>
+      window.nexo?.pantalla() === 'inicio' &&
+      !window.nexo.enTransicion() &&
+      getComputedStyle(document.getElementById('lienzo')!).opacity === '1',
+    undefined,
+    { timeout: 30_000 },
+  );
+}
+
+/** Abre el juego en modo prueba (calidad baja, más rápido) y espera a que el inicio esté listo. */
 export async function abrir(page: Page, consulta = ''): Promise<string[]> {
   const errores = recogerErrores(page);
   await page.goto(`/?prueba=1&calidad=bajo${consulta}`);
-  await page.waitForFunction(() => window.nexo?.pantalla() === 'inicio', undefined, { timeout: 30_000 });
+  await esperarInicio(page);
   return errores;
 }

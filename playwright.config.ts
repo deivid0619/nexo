@@ -20,6 +20,8 @@ export default defineConfig({
       use: { browserName: 'chromium', viewport: { width: 1280, height: 720 }, launchOptions: webglSoftware },
     },
     { name: 'celular', use: { browserName: 'chromium', ...celular, launchOptions: webglSoftware } },
-    { name: 'iphone', use: { browserName: 'webkit', ...celular } },
+    // WebKit de Playwright en Windows a veces no logra crear el contexto WebGL (uno de unas 30 cargas):
+    // un reintento, y Playwright la marca como inestable. El iPhone real se revisa a mano en el cierre.
+    { name: 'iphone', retries: 1, use: { browserName: 'webkit', ...celular } },
   ],
 });

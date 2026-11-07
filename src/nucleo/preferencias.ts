@@ -7,15 +7,19 @@ export interface Parametros {
   fps: boolean;
   /** Calidad pedida a mano (?calidad=alto|medio|bajo); null si no se pidió o no existe. */
   calidad: NivelCalidad | null;
+  /** Hace fallar la carga una vez para probar "Reintentar". Solo vale con ?prueba=1. */
+  fallarCarga: boolean;
 }
 
 export function leerParametros(busqueda: string): Parametros {
   const p = new URLSearchParams(busqueda);
   const calidad = p.get('calidad');
+  const prueba = p.get('prueba') === '1';
   return {
-    prueba: p.get('prueba') === '1',
+    prueba,
     fps: p.get('fps') === '1',
     calidad: NIVELES.includes(calidad as NivelCalidad) ? (calidad as NivelCalidad) : null,
+    fallarCarga: prueba && p.get('fallarCarga') === '1',
   };
 }
 

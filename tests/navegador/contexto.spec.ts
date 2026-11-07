@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { recogerErrores } from './ayudas';
+import { esperarInicio, recogerErrores } from './ayudas';
 
 test('pierde y recupera el contexto WebGL', async ({ page }) => {
   const errores = recogerErrores(page);
   await page.goto('/?prueba=1&calidad=bajo');
-  await page.waitForFunction(() => window.nexo);
+  await esperarInicio(page);
   await page.evaluate(() => {
     const gl = document.querySelector('canvas')!.getContext('webgl2')!;
     (window as any).__ext = gl.getExtension('WEBGL_lose_context');
@@ -24,9 +24,9 @@ test('pierde y recupera el contexto WebGL', async ({ page }) => {
 
 test('el medidor aparece solo con ?fps=1', async ({ page }) => {
   await page.goto('/?prueba=1&calidad=bajo');
-  await page.waitForFunction(() => window.nexo);
+  await esperarInicio(page);
   await expect(page.locator('.medidor')).toHaveCount(0);
   await page.goto('/?prueba=1&calidad=bajo&fps=1');
-  await page.waitForFunction(() => window.nexo);
+  await esperarInicio(page);
   await expect(page.locator('.medidor')).toContainText(/fps · \d+ llamadas/, { timeout: 5000 });
 });
