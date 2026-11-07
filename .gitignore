@@ -3,3 +3,9 @@ Thumbs.db
 *.log
 node_modules/
 .claude/skills/
+dist/
+_site/
+test-results/
+playwright-report/
+.claude/launch.json
+.superpowers/

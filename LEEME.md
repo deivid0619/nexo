@@ -10,7 +10,7 @@ https://deivid0619.github.io/nexo/
 ## Jugar en el computador (desde esta carpeta)
 
 ```bash
-python -m http.server 5330 --bind 127.0.0.1
+python -m http.server 5330 --bind 127.0.0.1 --directory prototipo
 ```
 
 Abrir http://127.0.0.1:5330
@@ -18,7 +18,7 @@ Abrir http://127.0.0.1:5330
 ## Jugar en el celular (misma red Wi-Fi)
 
 ```bash
-python -m http.server 5330
+python -m http.server 5330 --directory prototipo
 ```
 
 En el celular abrir `http://IP-DEL-COMPUTADOR:5330` (la IP sale con `ipconfig`, "Dirección IPv4").

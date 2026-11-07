@@ -1,54 +1,16 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#061a33">
-<title>NEXO</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="estilos.css">
-<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
-</head>
-<body>
-<canvas id="lienzo"></canvas>
-
-<div id="hud">
-  <div class="fila">
-    <div id="vidas" aria-label="Vidas"></div>
-    <div id="modo">2D</div>
-    <div id="puntos">0</div>
-  </div>
-  <div id="jefe" hidden>
-    <span>CENTINELA</span>
-    <div class="barra"><div id="jefe-barra"></div></div>
-  </div>
-  <div id="aviso" role="status"></div>
-  <div id="pista"></div>
-</div>
-
-<div id="menu" class="capa">
-  <h1><span class="plano">NE</span><span class="vol">XO</span></h1>
-  <p class="lema">Corre en 2D. Cruza el portal. Sobrevive en 3D.</p>
-  <button id="jugar">Jugar</button>
-  <p id="menu-record" class="nota"></p>
-  <ul class="controles">
-    <li><b>Tocar</b> saltar, o disparar si tienes arma</li>
-    <li><b>Deslizar hacia arriba</b> saltar</li>
-    <li><b>Deslizar a los lados</b> cambiar de carril en 3D</li>
-    <li class="teclado"><b>Teclado</b> espacio, flechas y X para disparar</li>
-  </ul>
-  <p class="nota">Se juega mejor con el celular en horizontal</p>
-</div>
-
-<div id="fin" class="capa" hidden>
-  <h2 id="fin-titulo"></h2>
-  <p id="fin-texto"></p>
-  <button id="otra">Jugar otra vez</button>
-  <button id="al-menu" class="sec">Menú</button>
-</div>
-
-<script type="module" src="juego.js"></script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1B1814" />
+    <title>NEXO</title>
+    <!-- Única excepción al sistema de valores: el fondo antes de que cargue el CSS (= --c-fondo). -->
+    <style>html,body{margin:0;background:#1B1814}</style>
+  </head>
+  <body>
+    <canvas id="lienzo"></canvas>
+    <div id="capa"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
 </html>
