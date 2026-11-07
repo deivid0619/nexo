@@ -5,7 +5,8 @@ import './interfaz/componentes.css';
 
 import { Color, PerspectiveCamera, Scene, type WebGLRenderer } from 'three';
 import { crearBucle } from './nucleo/bucle';
-import { leerParametros } from './nucleo/preferencias';
+import { leerParametros, movimientoReducido } from './nucleo/preferencias';
+import { crearCamaraMenu } from './camara/camara-menu';
 import { instalarModoPrueba } from './nucleo/modo-prueba';
 import { CALIDADES, elegirCalidad } from './render/calidad';
 import { crearRenderizador, ErrorSinWebGL, observarTamano, vigilarContexto } from './render/renderizador';
@@ -34,6 +35,8 @@ function arrancar(): void {
   const escena = new Scene();
   escena.background = new Color(0xc9a47e);
   const camara = new PerspectiveCamera(42, 2, 0.1, 2200);
+  const camaraMenu = crearCamaraMenu(camara, { movimientoReducido });
+  camaraMenu.irA('inicio', true);
 
   observarTamano(renderer, (ancho, alto) => {
     camara.aspect = ancho / alto;
@@ -41,7 +44,8 @@ function arrancar(): void {
   });
 
   const medidor = parametros.fps ? crearMedidor(renderer, document.body) : null;
-  const bucle = crearBucle((dt) => {
+  const bucle = crearBucle((dt, t) => {
+    camaraMenu.actualizar(dt, t);
     renderer.render(escena, camara);
     medidor?.actualizar(dt);
   });
@@ -62,6 +66,7 @@ function arrancar(): void {
   if (parametros.prueba) {
     instalarModoPrueba({
       avanzar: (segundos) => bucle.avanzar(segundos),
+      camara: () => camaraMenu.estado(),
       render: () => ({ llamadas: renderer.info.render.calls, triangulos: renderer.info.render.triangles }),
     });
   }
