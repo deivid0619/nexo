@@ -19,6 +19,7 @@ import { crearAvisos } from './interfaz/aviso';
 import { crearAvisoGirar } from './interfaz/girar';
 import { pedirConfirmacion } from './interfaz/confirmacion';
 import { crearPantallaInicio } from './interfaz/pantallas/inicio';
+import { crearPantallaTorre } from './interfaz/pantallas/torre';
 import { almacenLocal } from './guardado/almacen';
 import { cargarProgreso, guardarProgreso, progresoInicial, tieneAvance } from './guardado/progreso';
 import { TEXTOS } from './textos/es';
@@ -72,8 +73,8 @@ function arrancar(): void {
     duracionMs: DURACION_PANTALLA_MS,
   });
 
-  // En esta tarea "Continuar" todavía no lleva a ningún lado; la Tarea 11 abre el mapa de la torre.
-  const alContinuar = () => avisos.mostrar(TEXTOS.pronto);
+  // "Continuar" abre el mapa de la torre; queda en el historial para que "atrás" vuelva al inicio.
+  const alContinuar = () => void gestor.ir('torre', { apilar: true });
 
   const inicio = crearPantallaInicio({
     estado: () => estado,
@@ -93,9 +94,22 @@ function arrancar(): void {
     },
     avisos,
   });
-  const refrescables = [inicio];
+  let resaltado: number | null = null;
+  const torre = crearPantallaTorre({
+    estado: () => estado,
+    avisos,
+    // El juego llega en la etapa 2: por ahora el portal solo avisa.
+    alEntrarPortal: () => avisos.mostrar(TEXTOS.torre.portalPronto),
+    alResaltar(indice) {
+      resaltado = indice;
+      mundo.resaltarPiso(indice);
+    },
+    alVolver: () => gestor.atras(),
+  });
+  const refrescables = [inicio, torre];
 
   gestor.registrar(inicio);
+  gestor.registrar(torre);
   gestor.ir('inicio', { instantaneo: true });
   history.replaceState({ pantalla: 'inicio' }, '');
 
@@ -126,7 +140,9 @@ function arrancar(): void {
       camara: () => camaraMenu.estado(),
       render: () => ({ llamadas: renderer.info.render.calls, triangulos: renderer.info.render.triangles }),
       pantalla: () => gestor.actual(),
-      ir: (id) => gestor.ir(id),
+      ir: (id) => gestor.ir(id, { apilar: id === 'torre' }),
+      resaltado: () => resaltado,
+      enTransicion: () => gestor.enTransicion(),
       progreso(cambios) {
         if (cambios) {
           const progreso = { ...estado.progreso, ...cambios };

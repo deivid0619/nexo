@@ -83,11 +83,10 @@ export function crearGestorPantallas(capa: HTMLElement, deps: Dependencias): Ges
         if (vieja) ocultar(vieja);
         actual = nueva;
         nueva.elemento.classList.add('entrando');
-        nueva.elemento.hidden = false;
-        ventana.requestAnimationFrame(() => {
-          nueva.elemento.classList.remove('entrando');
-          nueva.alEntrar?.();
-        });
+        // Se prepara en el mismo instante en que pasa a ser la actual: un toque rápido ya la encuentra lista.
+        mostrar(nueva);
+        // El fundido de entrada arranca en el cuadro siguiente.
+        ventana.requestAnimationFrame(() => nueva.elemento.classList.remove('entrando'));
       }, duracionMs);
       setTimeout(() => {
         enCurso = false;

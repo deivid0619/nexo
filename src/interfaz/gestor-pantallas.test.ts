@@ -85,6 +85,15 @@ test('la transición: sale la vieja, entra la nueva y termina a 2·duración', (
   expect(alSalir).toHaveBeenCalledTimes(1);
 });
 
+test('la pantalla nueva ya está lista cuando pasa a ser la actual', () => {
+  g.ir('inicio', { instantaneo: true });
+  g.ir('torre');
+  vi.advanceTimersByTime(280);
+  // Mismo instante del cambio, antes del cuadro siguiente: un toque rápido ya la encuentra preparada.
+  expect(g.actual()).toBe('torre');
+  expect(alEntrar).toHaveBeenCalledTimes(1);
+});
+
 test('atrás del navegador vuelve al inicio sin apilar', () => {
   g.ir('inicio', { instantaneo: true });
   g.ir('torre', { apilar: true });

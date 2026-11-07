@@ -19,23 +19,37 @@ import type { SombraContacto } from './sombra-contacto';
 import { alturaTerreno } from './terreno';
 import { POSICION_TORRE } from './torre';
 
+/** Las tomas desde las que se tiene que ver la torre entera. */
+const TOMAS_CON_TORRE = [TOMAS.inicio, TOMAS.torre];
+/** Holgura a cada lado de la línea, por metro de distancia (unos 2,6°): cubre la torre y sus anillos. */
+const HOLGURA = 0.045;
+
 /**
- * Franja en x que tiene que quedar libre a la altura z para ver la torre desde la toma de inicio:
- * sigue la línea de la cámara a la torre y se ensancha hacia el fondo (la torre mide unos 20 m de ancho).
+ * Franja en x que tiene que quedar libre a la altura z para ver la torre desde el inicio y desde el mapa:
+ * sigue las líneas de las dos cámaras a la torre y se ensancha hacia el fondo.
  */
-export function franjaVistaTorre(z: number): { centro: number; margen: number } {
-  const [cx, , cz] = TOMAS.inicio.posicion;
+export function franjaVistaTorre(z: number): { izquierda: number; derecha: number } {
   const [tx, , tz] = POSICION_TORRE;
-  const t = (cz - z) / (cz - tz);
-  return { centro: cx + (tx - cx) * t, margen: 1 + 11 * t };
+  let izquierda = Infinity;
+  let derecha = -Infinity;
+  for (const {
+    posicion: [cx, , cz],
+  } of TOMAS_CON_TORRE) {
+    const distancia = cz - z;
+    const x = cx + ((tx - cx) * distancia) / (cz - tz);
+    const margen = 1 + HOLGURA * distancia;
+    izquierda = Math.min(izquierda, x - margen);
+    derecha = Math.max(derecha, x + margen);
+  }
+  return { izquierda, derecha };
 }
 
 /** Si un edificio de media anchura `mitad` tapa la torre, lo corre hacia afuera, a la derecha de la franja. */
 export function despejarVistaTorre(x: number, z: number, mitad: number): number {
   if (z <= POSICION_TORRE[2] + 20) return x;
-  const { centro, margen } = franjaVistaTorre(z);
-  if (x + mitad <= centro - margen || x - mitad >= centro + margen) return x;
-  return centro + margen + mitad;
+  const { izquierda, derecha } = franjaVistaTorre(z);
+  if (x + mitad <= izquierda || x - mitad >= derecha) return x;
+  return derecha + mitad;
 }
 
 /** Fachada de concreto con ventanas oscuras y manchas de óxido (de la maqueta). */

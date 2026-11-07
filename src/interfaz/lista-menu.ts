@@ -61,9 +61,12 @@ export function crearListaMenu(contenedor: HTMLElement, opciones: Opciones): Lis
   };
 
   items.forEach((el, i) => {
-    const alEntrar = () => lista.enfocar(i);
+    // Un elemento deshabilitado nunca se queda con la selección: el toque solo le pide a la pantalla que avise.
+    const alEntrar = () => {
+      if (!deshabilitado(el)) lista.enfocar(i);
+    };
     const alTocar = () => {
-      lista.enfocar(i);
+      alEntrar();
       opciones.alActivar(i, 'toque');
     };
     el.addEventListener('pointerenter', alEntrar);

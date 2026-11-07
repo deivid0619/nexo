@@ -94,6 +94,41 @@
   text-align: right;
 }
 
+/* Mapa de la torre: los pisos a la izquierda y la tarjeta abajo a la derecha;
+   la torre queda libre en el centro. */
+.lista-pisos {
+  position: absolute;
+  top: var(--borde-arriba);
+  bottom: var(--borde-abajo);
+  left: var(--borde-izq);
+  width: var(--ancho-panel);
+  padding: var(--e-4) var(--e-3);
+  overflow-y: auto;
+}
+.lista-pisos > .etiqueta { padding: 0 var(--e-2) var(--e-3); }
+.lista-pisos .filas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-1);
+}
+.tarjeta-piso {
+  position: absolute;
+  right: var(--borde-der);
+  bottom: var(--borde-abajo);
+  width: var(--ancho-panel);
+  padding: var(--e-5) var(--e-6);
+}
+.tarjeta-piso .titulo { margin: var(--e-3) 0; }
+.tarjeta-piso .cta {
+  width: 100%;
+  margin-top: var(--e-5);
+}
+.pantalla-torre .boton-volver {
+  position: absolute;
+  top: var(--borde-arriba);
+  right: var(--borde-der);
+}
+
 .item,
 .fila {
   display: flex;

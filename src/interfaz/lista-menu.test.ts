@@ -48,6 +48,14 @@ test('puntero encima marca solo ese elemento', () => {
   expect(marcados()).toEqual([false, true, false, false]);
 });
 
+test('un elemento deshabilitado avisa pero no se queda con la selección', () => {
+  items[2].dispatchEvent(new Event('pointerenter'));
+  items[2].click();
+  expect(alActivar).toHaveBeenLastCalledWith(2, 'toque');
+  expect(l.activo()).toBe(0);
+  expect(marcados()).toEqual([true, false, false, false]);
+});
+
 test('una tecla que no es del menú no se usa', () => {
   expect(l.teclado(new KeyboardEvent('keydown', { key: 'x' }))).toBe(false);
 });

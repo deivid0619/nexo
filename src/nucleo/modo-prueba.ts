@@ -19,6 +19,10 @@ export interface ApiPrueba {
   ir(id: IdPantalla): boolean;
   /** Devuelve el progreso; con cambios, los mezcla, los guarda y repinta las pantallas. */
   progreso(cambios?: Partial<Progreso>): Progreso;
+  /** Piso resaltado en la torre 3D (índice en PISOS), o null. */
+  resaltado(): number | null;
+  /** True mientras una pantalla sale y otra entra. */
+  enTransicion(): boolean;
 }
 
 declare global {
