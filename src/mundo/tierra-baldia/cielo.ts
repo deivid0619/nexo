@@ -69,7 +69,7 @@ export function crearCielo(escena: Scene, paleta: PaletaExterior, calidad: Calid
   escena.add(cielo);
 
   // Intensidades de la maqueta (r128) ×π: three 0.187 usa luces físicas.
-  escena.add(new HemisphereLight(paleta.hemiCielo, paleta.hemiSuelo, 0.7 * Math.PI));
+  escena.add(new HemisphereLight(paleta.hemiCielo, paleta.hemiSuelo, 1.0 * Math.PI));
 
   const sol = new DirectionalLight(paleta.luzSol, 1.75 * Math.PI);
   sol.position.copy(dirSol).multiplyScalar(120).add(new Vector3(0, 0, -20));

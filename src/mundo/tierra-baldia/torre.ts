@@ -24,6 +24,9 @@ export interface Torre {
   resaltarPiso(indice: number | null): void;
 }
 
+/** Base de la torre del Proyecto NEXO, al fondo de la carretera. */
+export const POSICION_TORRE: [number, number, number] = [26, 0, -330];
+
 const ANILLOS: [altura: number, radio: number][] = [
   [40, 11],
   [80, 9],
@@ -51,7 +54,7 @@ function texturaBrillo(): CanvasTexture {
 export function crearTorre(escena: Scene, paleta: PaletaExterior): Torre {
   const T = new Group();
   T.name = 'torre';
-  T.position.set(26, 0, -330);
+  T.position.set(...POSICION_TORRE);
   escena.add(T);
 
   // Base, eje y aletas en una sola malla.
