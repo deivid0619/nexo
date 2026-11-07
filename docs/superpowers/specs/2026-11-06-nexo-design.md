@@ -1,6 +1,6 @@
 # NEXO: documento de diseño
 
-Fecha: 2026-11-06 · Autor del juego: David · Estado: borrador para aprobar
+Fecha: 2026-11-06 · Autor del juego: David · Estado: aprobado por David (2026-11-06)
 
 Este documento describe la versión profesional de NEXO. Reemplaza al prototipo actual
 (`index.html`, `juego.js`, `estilos.css`), que queda en el historial de git como referencia de
