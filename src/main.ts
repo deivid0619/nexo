@@ -23,7 +23,7 @@ import { crearPantallaInicio } from './interfaz/pantallas/inicio';
 import { crearPantallaTorre } from './interfaz/pantallas/torre';
 import { almacenLocal } from './guardado/almacen';
 import { cargarProgreso, guardarProgreso, progresoInicial, tieneAvance } from './guardado/progreso';
-import { CARGA_MINIMA_MS, ejecutarTareas, type Tarea } from './carga/cargador';
+import { CARGA_MINIMA_MS, completarMinimo, ejecutarTareas, type Tarea } from './carga/cargador';
 import { TEXTOS } from './textos/es';
 
 /** Semilla del mundo: sale igual en cada arranque. */
@@ -249,9 +249,7 @@ async function arrancar(): Promise<void> {
   }
 
   // 5. Un mínimo en pantalla para que la carga no parpadee.
-  const falta = CARGA_MINIMA_MS - (performance.now() - inicioCarga);
-  if (falta > 0) await esperar(falta);
-  registroCarga.duracionMs = performance.now() - inicioCarga;
+  registroCarga.duracionMs = await completarMinimo(inicioCarga, CARGA_MINIMA_MS, () => performance.now(), esperar);
   registroCarga.estado = 'lista';
 
   // 6. Revelar: la escena aparece mientras la cámara viaja de la carga al inicio.

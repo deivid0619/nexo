@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { ejecutarTareas } from './cargador';
+import { completarMinimo, ejecutarTareas } from './cargador';
 
 const cuadro = () => Promise.resolve();
 
@@ -65,4 +65,26 @@ test('espera un cuadro entre tareas para que la barra se pinte', async () => {
     async () => void orden.push('cuadro'),
   );
   expect(orden).toEqual(['a', 'cuadro', 'b', 'cuadro']);
+});
+
+// Publicación 2026-11-07: en CI la carga midió 1199,8 ms porque el temporizador despertó antes.
+test('completarMinimo espera hasta cumplir el mínimo aunque el temporizador despierte antes', async () => {
+  let reloj = 1000;
+  const ahora = () => reloj;
+  // Un temporizador que despierta 0,2 ms antes de lo pedido.
+  const esperar = async (ms: number) => {
+    reloj += Math.max(0, ms - 0.2);
+  };
+  const duracion = await completarMinimo(1000, 1200, ahora, esperar);
+  expect(duracion).toBeGreaterThanOrEqual(1200);
+  expect(reloj - 1000).toBeGreaterThanOrEqual(1200);
+});
+
+test('completarMinimo no espera si ya pasó el mínimo', async () => {
+  let esperas = 0;
+  const duracion = await completarMinimo(0, 1200, () => 1500, async () => {
+    esperas++;
+  });
+  expect(duracion).toBe(1500);
+  expect(esperas).toBe(0);
 });

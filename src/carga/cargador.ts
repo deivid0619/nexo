@@ -46,3 +46,21 @@ export async function ejecutarTareas(
     await esperarCuadro();
   }
 }
+
+/**
+ * Espera lo que falte para que la carga dure al menos `minimoMs` desde `inicio` y devuelve lo que
+ * duró. Repite porque los temporizadores del navegador pueden despertar una fracción antes.
+ */
+export async function completarMinimo(
+  inicio: number,
+  minimoMs: number,
+  ahora: () => number,
+  esperar: (ms: number) => Promise<void>,
+): Promise<number> {
+  let transcurrido = ahora() - inicio;
+  while (transcurrido < minimoMs) {
+    await esperar(Math.ceil(minimoMs - transcurrido));
+    transcurrido = ahora() - inicio;
+  }
+  return transcurrido;
+}
