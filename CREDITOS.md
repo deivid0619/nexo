@@ -22,6 +22,15 @@ Las fuentes se incluyen con los paquetes de Fontsource (https://fontsource.org).
 El sitio publicado lleva los textos completos de estas licencias en `avance/LICENCIAS.txt`
 (lo arma `scripts/armar-sitio.mjs`), porque el build quita los comentarios de licencia.
 
+## Modelos y animaciones
+
+| Recurso | Autor | Enlace | Licencia |
+|---|---|---|---|
+| Maniquí y animaciones del corredor (`public/modelos/corredor.glb`): Universal Animation Library, versión Standard | Quaternius | https://quaternius.com/packs/universalanimationlibrary.html | CC0 1.0 |
+
+El corredor es provisional: el personaje final con ropa llega en la etapa 3. El archivo se recorta
+(7 animaciones) y se comprime con `scripts/preparar-corredor.mjs`.
+
 ## Íconos
 
 | Recurso | Autor | Enlace | Licencia |
