@@ -3,8 +3,10 @@ import './interfaz/tokens.css';
 import './interfaz/base.css';
 import './interfaz/componentes.css';
 
-import { Color, PerspectiveCamera, Scene, type WebGLRenderer } from 'three';
+import { PerspectiveCamera, Scene, type WebGLRenderer } from 'three';
+import { crearAzar } from './nucleo/azar';
 import { crearBucle } from './nucleo/bucle';
+import { crearTierraBaldia } from './mundo/tierra-baldia';
 import { leerParametros, movimientoReducido } from './nucleo/preferencias';
 import { crearCamaraMenu } from './camara/camara-menu';
 import { instalarModoPrueba } from './nucleo/modo-prueba';
@@ -13,6 +15,9 @@ import { crearRenderizador, ErrorSinWebGL, observarTamano, vigilarContexto } fro
 import { crearMedidor } from './render/medidor';
 import { crearVeloSistema } from './interfaz/velo-sistema';
 import { TEXTOS } from './textos/es';
+
+/** Semilla del mundo: sale igual en cada arranque. */
+const SEMILLA_MUNDO = 20261106;
 
 function arrancar(): void {
   const parametros = leerParametros(location.search);
@@ -31,9 +36,10 @@ function arrancar(): void {
     throw e;
   }
 
-  // Escena provisional: la Tierra baldía llega en la Tarea 6.
   const escena = new Scene();
-  escena.background = new Color(0xc9a47e);
+  const mundo = crearTierraBaldia(escena, calidad, crearAzar(SEMILLA_MUNDO));
+  // Hasta la Tarea 12 los pasos corren seguidos; después los reparte la pantalla de carga.
+  for (const paso of mundo.pasos) paso.correr();
   const camara = new PerspectiveCamera(42, 2, 0.1, 2200);
   const camaraMenu = crearCamaraMenu(camara, { movimientoReducido });
   camaraMenu.irA('inicio', true);
@@ -46,6 +52,7 @@ function arrancar(): void {
   const medidor = parametros.fps ? crearMedidor(renderer, document.body) : null;
   const bucle = crearBucle((dt, t) => {
     camaraMenu.actualizar(dt, t);
+    mundo.actualizar(dt, t);
     renderer.render(escena, camara);
     medidor?.actualizar(dt);
   });
