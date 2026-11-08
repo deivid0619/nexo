@@ -1,5 +1,5 @@
 import type { CamaraJuego } from '../camara/camara-juego';
-import type { Carril, Modo, Nivel, PistaNivel } from '../datos/niveles/tipos';
+import type { Carril, Evento, Modo, Nivel, PistaNivel } from '../datos/niveles/tipos';
 import type { Animacion, Corredor } from '../entidades/corredor';
 import type { Intencion } from '../entrada/controles';
 import type { Pista } from '../mundo/tierra-baldia/pista';
@@ -27,6 +27,8 @@ const QUITA_PISTA: Record<PistaNivel, EventoSim['tipo']> = {
   trepar: 'trepar',
   cable: 'soltar',
 };
+/** Lo que se cruza en el camino (para que una pista no salga con otro de estos delante). */
+const OBSTACULOS: ReadonlySet<Evento['tipo']> = new Set(['valla', 'viga', 'bloque', 'contenedor', 'foso', 'dron']);
 /** El panel de fin espera a que se vea la caída o la llegada (el prototipo esperaba 0,9 s). */
 const DEMORA_PANEL_S = 0.8;
 
@@ -54,7 +56,7 @@ export interface HudCarrera {
 export interface DepsCarrera {
   nivel: Nivel;
   opciones?: { desde?: number; sinDanio?: boolean };
-  corredor: Pick<Corredor, 'actualizar' | 'reiniciar' | 'animacion' | 'armaVisible'>;
+  corredor: Pick<Corredor, 'actualizar' | 'reiniciar' | 'animacion' | 'armaVisible' | 'avance'>;
   camara: CamaraJuego;
   pista: Pick<Pista, 'actualizar'>;
   hud: HudCarrera;
@@ -76,6 +78,8 @@ export interface EstadoJuego {
   vidas: number;
   puntaje: number;
   animacion: Animacion;
+  /** Cuánto va la animación del corredor, de 0 a 1. */
+  avanceAnimacion: number;
   mezcla: number;
   postura: Postura;
   armado: boolean;
@@ -122,14 +126,19 @@ export function crearCarrera(deps: DepsCarrera): Carrera {
     hud.pista(cual);
   };
 
-  /** Saca la pista del primer obstáculo de cada movimiento cuando ya está cerca. */
+  /**
+   * Saca la pista del primer obstáculo de cada movimiento cuando ya está cerca y no viene otro
+   * obstáculo antes (si no, la pista llegaría justo antes de algo que se pasa de otra forma).
+   */
   function mirarPistas(s: Simulacion): void {
-    for (const o of s.objetos()) {
+    const objetos = s.objetos();
+    for (const o of objetos) {
       const p = o.evento.pista;
-      if (p && !pistasVistas.has(p) && o.x > 0 && o.x <= PISTA_A_M) {
-        pistasVistas.add(p);
-        ponerPista(p);
-      }
+      if (!p || pistasVistas.has(p) || o.x <= 0 || o.x > PISTA_A_M) continue;
+      const otroAntes = objetos.some((otro) => OBSTACULOS.has(otro.evento.tipo) && otro.x > 0 && otro.x < o.x);
+      if (otroAntes) continue;
+      pistasVistas.add(p);
+      ponerPista(p);
     }
   }
 
@@ -274,6 +283,7 @@ export function crearCarrera(deps: DepsCarrera): Carrera {
         vidas: sim.vidas,
         puntaje: sim.puntaje,
         animacion: corredor.animacion(),
+        avanceAnimacion: corredor.avance(),
         mezcla: camara.mezcla(),
         postura: sim.postura,
         armado: sim.armado,

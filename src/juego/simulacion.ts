@@ -1,6 +1,7 @@
 import type { Carril, Evento, Habilidad, Modo, Nivel } from '../datos/niveles/tipos';
 import {
   ALTO_CONTENEDOR,
+  AVANCE_TREPAR_M,
   BALA_ALCANCE_M,
   BALA_MS,
   BONO_DRON,
@@ -133,6 +134,8 @@ export interface Simulacion {
   readonly vaiven: number | null;
   /** Tiene la pistola (entre la estación de armas y el EMP). */
   readonly armado: boolean;
+  /** Rodando o trepando: cuánto va del movimiento, de 0 a 1 (vuelve a 0 al rodar otra vez); si no, null. */
+  readonly progreso: number | null;
   balas(): readonly Bala[];
   objetos(): readonly ObjetoPista[];
   /** Avanza `dt` segundos; devuelve lo que pasó (incluye lo que causaron las acciones). */
@@ -332,8 +335,10 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
     }
     if (postura === 'trepando') {
       const pasoElFinal = trepado !== null && trepado.evento.en + largoDe(trepado.evento) - distancia < 0;
-      if (pasoElFinal) {
-        // Se acabó el contenedor antes de terminar de subir: cae desde donde va.
+      // En 3D, un cambio de carril empezado justo antes del frente lo saca del contenedor.
+      const seFue = trepado?.evento.tipo === 'contenedor' && !alLado(trepado.evento.carril);
+      if (pasoElFinal || seFue) {
+        // Se acabó el contenedor (o se fue de su carril) antes de terminar de subir: cae desde donde va.
         postura = 'corriendo';
         trepado = null;
         enAire = true;
@@ -353,11 +358,14 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
       y = Math.max(FONDO_FOSO, y + vy * dt);
       const piso = sueloBajo();
       if (piso !== null) {
-        // Pasó el borde lejano: reaparece de pie, con el momento sin daño de siempre.
+        // Pasó el borde lejano: reaparece de pie, con el momento sin daño de siempre y sin nada del
+        // vuelo que lo llevó al foso (caída rápida o el doble salto gastado).
         postura = 'corriendo';
         y = piso;
         vy = 0;
         enAire = false;
+        caidaRapida = false;
+        dobleUsado = false;
         invulnerable = SIN_DANIO_TRAS_GOLPE;
       }
       return;
@@ -575,6 +583,11 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
     get armado() {
       return armado;
     },
+    get progreso() {
+      if (postura === 'rodando') return Math.min(1, (tiempo - inicioRodar) / DURACION_RODAR);
+      if (postura === 'trepando') return Math.min(1, (tiempo - inicioTrepar) / (finTrepar - inicioTrepar));
+      return null;
+    },
     balas: () => balas,
     get vaiven() {
       return postura === 'colgado' ? avanceVaiven() : null;
@@ -599,7 +612,9 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
       tiempo += dt;
       velocidad =
         habilidades.turbo > 0 ? VELOCIDAD_TURBO : Math.min(VELOCIDAD_MAXIMA, VELOCIDAD_BASE + distancia * VELOCIDAD_POR_METRO);
-      distancia += velocidad * dt;
+      // Trepando casi no avanza: sube pegado al frente del contenedor y no a través de él.
+      distancia +=
+        postura === 'trepando' ? Math.min(velocidad, AVANCE_TREPAR_M / (finTrepar - inicioTrepar)) * dt : velocidad * dt;
 
       while (siguiente < nivel.eventos.length && nivel.eventos[siguiente].en - distancia < APARECE_M) {
         const evento = nivel.eventos[siguiente++];

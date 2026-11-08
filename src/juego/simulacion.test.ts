@@ -903,3 +903,135 @@ test('desde en medio de un contenedor empieza encima', () => {
   expect(tipos(eventos)).not.toContain('golpe');
   expect(s.y).toBe(2);
 });
+
+// Revisión final: trepar termina encima sin atravesar el contenedor, reaparecer tras el foso limpia
+// el estado del aire y el avance de rodar y trepar se puede leer (para la animación).
+
+/** Trepa un contenedor de 6 m a 12 m/s y devuelve cuánto se metió el centro del corredor pasado el frente. */
+function treparA12(porElAire: boolean): { s: Simulacion; adentro: number } {
+  const en = 620;
+  const s = crearSimulacion(nivel([{ en, tipo: 'contenedor', largo: 6 }]));
+  if (porElAire) {
+    correrHastaContacto(s, en, BORDE_CONTENEDOR, 0.1);
+    s.saltar();
+  } else {
+    correrHasta(s, en - 0.5);
+  }
+  expect(s.velocidad).toBe(12);
+  while (s.postura !== 'trepando' && s.distancia < en + 1) s.paso(DT);
+  expect(s.postura).toBe('trepando');
+  let adentro = 0;
+  while (s.postura === 'trepando') {
+    s.paso(DT);
+    if (s.y < 2) adentro = Math.max(adentro, s.distancia - en);
+  }
+  return { s, adentro };
+}
+
+for (const porElAire of [true, false]) {
+  test(`trepar a 12 m/s ${porElAire ? 'saltando' : 'por el suelo'}: sube casi en el frente y queda encima`, () => {
+    const { s, adentro } = treparA12(porElAire);
+    // Mientras sube, el centro del corredor no pasa de 0,7 m detrás del frente.
+    expect(adentro).toBeLessThanOrEqual(0.7);
+    expect(s.y).toBe(2);
+    expect(s.suelo).toBe(2);
+    expect(s.postura).toBe('corriendo');
+  });
+}
+
+test('3D: cambiar de carril justo antes del frente no trepa al costado del contenedor', () => {
+  const s = crearSimulacion(
+    nivel([
+      { en: 2, tipo: 'portal', a: 3 },
+      { en: 40, tipo: 'contenedor', largo: 12, carril: 0 },
+    ]),
+  );
+  correrHastaContacto(s, 40, BORDE_CONTENEDOR, 0.02);
+  s.cambiarCarril(1);
+  let yMax = 0;
+  const eventos: EventoSim[] = [];
+  for (let i = 0; i < 90; i++) {
+    eventos.push(...s.paso(DT));
+    yMax = Math.max(yMax, s.y);
+  }
+  expect(tipos(eventos)).toContain('golpe');
+  // Al irse del carril deja de trepar: nunca queda a 2 m fuera del contenedor.
+  expect(yMax).toBeLessThan(1.9);
+  expect(s.carril).toBe(1);
+  expect(s.y).toBe(0);
+  expect(s.postura).toBe('corriendo');
+});
+
+test('caída rápida a un foso: al reaparecer ya no cae rápido y el doble salto vuelve', () => {
+  const s = crearSimulacion(
+    nivel([
+      { en: 2, tipo: 'habilidad', clase: 'doble' },
+      { en: 20, tipo: 'foso', largo: 3 },
+    ]),
+  );
+  correrHastaContacto(s, 20, 0, 0.1);
+  s.saltar();
+  correr(s, 0.12);
+  s.rodar();
+  expect(s.caidaRapida).toBe(true);
+  const eventos = correrHasta(s, 21);
+  expect(tipos(eventos)).toContain('foso');
+  correrHasta(s, 23.5);
+  expect(s.postura).toBe('corriendo');
+  expect(s.caidaRapida).toBe(false);
+  s.saltar();
+  correr(s, 0.15);
+  s.saltar();
+  expect(tipos(s.paso(DT))).toContain('doble-salto');
+});
+
+test('soltarse muy pronto del cable y caer al foso: después del foso hay doble salto', () => {
+  const s = crearSimulacion(
+    nivel([
+      { en: 2, tipo: 'habilidad', clase: 'doble' },
+      { en: 20, tipo: 'foso', largo: 12 },
+      { en: 20, tipo: 'cable' },
+    ]),
+  );
+  colgarse(s, 20);
+  expect(s.postura).toBe('colgado');
+  s.soltar();
+  correrHasta(s, 33);
+  expect(s.postura).toBe('corriendo');
+  s.saltar();
+  correr(s, 0.15);
+  s.saltar();
+  expect(tipos(s.paso(DT))).toContain('doble-salto');
+});
+
+test('el avance de rodar va de 0 a 1 y vuelve a 0 al rodar otra vez', () => {
+  const s = crearSimulacion(nivel([]));
+  expect(s.progreso).toBeNull();
+  s.rodar();
+  s.paso(DT);
+  expect(s.progreso!).toBeLessThan(0.05);
+  correr(s, 0.35);
+  expect(s.progreso!).toBeCloseTo(0.52, 1);
+  s.rodar();
+  s.paso(DT);
+  expect(s.progreso!).toBeLessThan(0.05);
+  correr(s, 0.75);
+  expect(s.progreso).toBeNull();
+});
+
+test('el avance de trepar usa lo que dura ese trepar: 0,45 s saltando y 0,8 s por el suelo', () => {
+  const saltando = crearSimulacion(nivel([{ en: 20, tipo: 'contenedor', largo: 10 }]));
+  correrHastaContacto(saltando, 20, BORDE_CONTENEDOR, 0.1);
+  saltando.saltar();
+  while (saltando.postura !== 'trepando') saltando.paso(DT);
+  correr(saltando, 0.2);
+  expect(saltando.progreso!).toBeGreaterThan(0.4);
+  expect(saltando.progreso!).toBeLessThan(0.55);
+
+  const suelo = crearSimulacion(nivel([{ en: 20, tipo: 'contenedor', largo: 10 }]));
+  correrHasta(suelo, 19.5);
+  while (suelo.postura !== 'trepando') suelo.paso(DT);
+  correr(suelo, 0.2);
+  expect(suelo.progreso!).toBeGreaterThan(0.22);
+  expect(suelo.progreso!).toBeLessThan(0.3);
+});

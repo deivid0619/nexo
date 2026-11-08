@@ -27,6 +27,11 @@ export const ALTO_CONTENEDOR = 2;
 export const DURACION_TREPAR = 0.45;
 export const DURACION_TREPAR_GOLPE = 0.8;
 export const MEDIO_ANCHO_CONTENEDOR = 0.75;
+/**
+ * Lo que avanza el corredor mientras trepa (sea cual sea su velocidad): se agarra a 0,3 m del frente
+ * y termina encima a unos 0,6 m de él, sin atravesar el contenedor.
+ */
+export const AVANCE_TREPAR_M = 0.9;
 
 /** Cable: un vaivén completo hacia adelante dura esto; u va de 0 (al agarrarse) a 1 (se suelta solo). */
 export const VAIVEN_S = 1.0;

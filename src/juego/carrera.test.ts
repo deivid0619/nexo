@@ -18,7 +18,7 @@ function armar(opciones: DepsCarrera['opciones'] = {}, recordAnterior?: number, 
   const deps = {
     nivel: n,
     opciones,
-    corredor: { actualizar: vi.fn(), reiniciar: vi.fn(), animacion: () => 'correr' as const, armaVisible: () => false },
+    corredor: { actualizar: vi.fn(), reiniciar: vi.fn(), animacion: () => 'correr' as const, armaVisible: () => false, avance: () => 0 },
     camara: {
       actualizar: vi.fn((_dt: number, s: { modo: 2 | 3 }) => {
         mezcla = s.modo === 3 ? 1 : 0;
@@ -393,4 +393,22 @@ test('el estado de la prueba trae la postura, el arma y si la pistola se ve', ()
   const { carrera } = armar({ desde: 40, sinDanio: true }, undefined, ZONA);
   carrera.empezar();
   expect(carrera.estado()).toMatchObject({ postura: 'corriendo', armado: true, pistola: false });
+});
+
+test('una pista no sale mientras otro obstáculo viene antes que su evento; sale al pasarlo', () => {
+  const CON_VALLA: Nivel = {
+    id: 'con-valla',
+    largo: 200,
+    eventos: [
+      { en: 30, tipo: 'valla' },
+      { en: 50, tipo: 'viga', pista: 'rodar' },
+    ],
+  };
+  const { carrera, hud } = armar({ desde: 10, sinDanio: true }, undefined, CON_VALLA);
+  carrera.empezar();
+  // La viga ya está a menos de 35 m, pero la valla de 30 m viene antes.
+  correrHasta(carrera, 29.5);
+  expect(pistasMostradas(hud)).not.toContain('rodar');
+  correrHasta(carrera, 31);
+  expect(hud.pista).toHaveBeenLastCalledWith('rodar');
 });

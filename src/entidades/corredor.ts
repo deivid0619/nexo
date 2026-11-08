@@ -16,7 +16,6 @@ import {
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import type { Postura } from '../juego/movimientos';
-import { DURACION_RODAR, DURACION_TREPAR, DURACION_TREPAR_GOLPE } from '../juego/movimientos';
 import type { EstadoCarrera, Simulacion } from '../juego/simulacion';
 import { ANCHO_CARRIL } from '../juego/simulacion';
 import type { PaletaExterior } from '../mundo/paletas';
@@ -124,6 +123,8 @@ export function elegirAnimacion(s: {
 export interface Corredor {
   grupo: Group;
   animacion(): Animacion;
+  /** Cuánto va la animación de ahora, de 0 a 1 (la de las piernas si corre con el arma). */
+  avance(): number;
   actualizar(dt: number, s: Simulacion, recientes: Recientes): void;
   /** Le da la pistola (se ve en la mano derecha solo mientras la carrera lo tiene armado). */
   ponerArma(pistola: Object3D): void;
@@ -210,7 +211,9 @@ export async function cargarCorredor(url: string, paleta: PaletaExterior): Promi
   const correr = cuerpoEntero.get('correr')!;
   const rodar = cuerpoEntero.get('rodar')!;
   const trepar = cuerpoEntero.get('trepar')!;
-  rodar.timeScale = rodar.getClip().duration / DURACION_RODAR;
+  // Rodar y trepar no corren solos: su cuadro sale del avance del movimiento en la simulación.
+  rodar.timeScale = 0;
+  trepar.timeScale = 0;
 
   // Capas: piernas corriendo + torso apuntando, disparando o con el escudo roto.
   const piernas = preparar(recortar(buscarClip('Sprint_Loop'), 'Sprint_Piernas', (h) => !esTorso(h)), false);
@@ -242,14 +245,9 @@ export async function cargarCorredor(url: string, paleta: PaletaExterior): Promi
     if (a === correr && peso.get(piernas)! > 0) correr.time = piernas.time;
   }
 
-  function cambiarA(nueva: Animacion, s: Simulacion, recientes: Recientes): void {
+  function cambiarA(nueva: Animacion, s: Simulacion): void {
     if (nueva === actual) return;
     actual = nueva;
-    if (nueva === 'trepar') {
-      // Tras un golpe sube más lento (lo mismo que la simulación).
-      const lento = recientes.golpe || recientes.escudoRoto;
-      trepar.timeScale = trepar.getClip().duration / (lento ? DURACION_TREPAR_GOLPE : DURACION_TREPAR);
-    }
     // Las de una vez empiezan de nuevo cada vez que se piden.
     for (const a of pedidas(nueva, s.armado)) if (a.loop === LoopOnce) arrancar(a);
   }
@@ -282,6 +280,10 @@ export async function cargarCorredor(url: string, paleta: PaletaExterior): Promi
   return {
     grupo,
     animacion: () => actual,
+    avance() {
+      const a = pedidas(actual, pistola?.visible ?? false)[0];
+      return a.time / a.getClip().duration;
+    },
     actualizar(dt, s, recientes) {
       tiempo += dt;
       // Cada disparo nuevo con el arma hace el gesto de disparar con el torso.
@@ -302,12 +304,16 @@ export async function cargarCorredor(url: string, paleta: PaletaExterior): Promi
           recientes,
         }),
         s,
-        recientes,
       );
       const ritmo = Math.max(0.6, s.velocidad / VELOCIDAD_NATURAL);
       correr.timeScale = ritmo;
       piernas.timeScale = ritmo;
       mezclar(dt, pedidas(actual, s.armado));
+      // Rodar otra vez vuelve a empezar el giro, y el trepar dura lo mismo que en las reglas (más lento
+      // tras un golpe): el cuadro de los dos clips sale del avance de la simulación.
+      const avance = s.progreso;
+      const movimiento = actual === 'rodar' ? rodar : actual === 'trepar' ? trepar : null;
+      if (movimiento && avance !== null) movimiento.time = Math.min(avance, 0.999) * movimiento.getClip().duration;
       mezclador.update(dt);
 
       // La altura puede ser negativa: cae dentro del foso.

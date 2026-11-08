@@ -274,6 +274,22 @@ test('deslizar hacia abajo rueda: la pista sale antes de la primera viga, se va 
   expect(errores).toEqual([]);
 });
 
+test('rodar otra vez en medio del giro vuelve a empezar la animación', async ({ page }) => {
+  const errores = await abrirTorre(page, `&desde=${VIGA + 2}`);
+  await entrar(page);
+  await deslizar(page, 0, 120);
+  await avanzar(page, 0.45);
+  let j = (await juego(page))!;
+  expect(j.animacion).toBe('rodar');
+  expect(j.avanceAnimacion).toBeGreaterThan(0.5);
+  await deslizar(page, 0, 120);
+  await avanzar(page, 1 / 60);
+  j = (await juego(page))!;
+  expect(j.animacion).toBe('rodar');
+  expect(j.avanceAnimacion).toBeLessThan(0.15);
+  expect(errores).toEqual([]);
+});
+
 test('saltar contra el primer contenedor lo trepa y queda encima con 3 vidas', async ({ page }) => {
   const errores = await abrirTorre(page, `&desde=${CONTENEDOR - 10}`);
   await entrar(page);
