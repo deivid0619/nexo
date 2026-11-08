@@ -1,7 +1,8 @@
 // Prepara el corredor para el celular a partir del maniquí CC0 de Quaternius.
-// Uso: npm run modelos:corredor -- <ruta a UAL1_Standard.glb>
-// El archivo de origen viene de "Universal Animation Library (Standard)":
-// https://quaternius.com/packs/universalanimationlibrary.html (CC0). No se guarda en el repositorio.
+// Uso: npm run modelos:corredor -- <UAL1_Standard.glb> <UAL2_Standard.glb> <colgar.glb>
+// Los dos primeros vienen de "Universal Animation Library" 1 y 2 (Standard), de Quaternius (CC0):
+// https://quaternius.com/packs/universalanimationlibrary.html y .../universalanimationlibrary2.html.
+// colgar.glb es propio: lo crea scripts/blender/colgar.py. Ninguno se guarda en el repositorio.
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS, EXTMeshoptCompression } from '@gltf-transform/extensions';
 import { dedup, meshopt, prune, quantize, resample } from '@gltf-transform/functions';
@@ -10,12 +11,18 @@ import { mkdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/** Las animaciones que usa el juego; el resto del paquete se descarta. */
-const CLIPS = new Set(['Idle_Loop', 'Sprint_Loop', 'Jump_Start', 'Jump_Loop', 'Jump_Land', 'Hit_Chest', 'Death01']);
+/** Las animaciones que usa el juego, por archivo; el resto de cada paquete se descarta. */
+const CLIPS_UAL1 = [
+  'Idle_Loop', 'Sprint_Loop', 'Jump_Start', 'Jump_Loop', 'Jump_Land', 'Hit_Chest', 'Death01',
+  'Roll', 'Pistol_Aim_Neutral', 'Pistol_Shoot',
+];
+const CLIPS_UAL2 = ['ClimbUp_1m', 'Hit_Knockback', 'Idle_Shield_Break', 'NinjaJump_Start', 'Yes'];
+const CLIPS_PROPIOS = ['Colgar_Loop'];
+const TOTAL = CLIPS_UAL1.length + CLIPS_UAL2.length + CLIPS_PROPIOS.length;
 
-const origen = process.argv[2];
-if (!origen) {
-  console.error('Falta la ruta: npm run modelos:corredor -- <ruta a UAL1_Standard.glb>');
+const [origen, origen2, propio] = process.argv.slice(2);
+if (!origen || !origen2 || !propio) {
+  console.error('Faltan rutas: npm run modelos:corredor -- <UAL1_Standard.glb> <UAL2_Standard.glb> <colgar.glb>');
   process.exit(1);
 }
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -28,13 +35,57 @@ const io = new NodeIO()
   .registerDependencies({ 'meshopt.decoder': MeshoptDecoder, 'meshopt.encoder': MeshoptEncoder });
 
 const documento = await io.read(origen);
-const animaciones = documento.getRoot().listAnimations();
-const encontradas = new Set(animaciones.map((a) => a.getName()));
-const faltan = [...CLIPS].filter((c) => !encontradas.has(c));
-if (faltan.length) {
-  console.error(`Al archivo le faltan animaciones: ${faltan.join(', ')}`);
-  process.exit(1);
+
+function revisar(doc, nombres, archivo) {
+  const encontradas = new Set(doc.getRoot().listAnimations().map((a) => a.getName()));
+  const faltan = nombres.filter((c) => !encontradas.has(c));
+  if (faltan.length) {
+    console.error(`A ${archivo} le faltan animaciones: ${faltan.join(', ')}`);
+    process.exit(1);
+  }
 }
+revisar(documento, CLIPS_UAL1, 'UAL1');
+
+/**
+ * Copia animaciones de otro archivo con el mismo esqueleto: cada canal apunta al hueso del
+ * corredor con el mismo nombre. `soloGiros` deja solo las rotaciones (el exportador de Blender
+ * escribe también posiciones y escalas de todos los huesos, que ya están en el corredor).
+ */
+async function copiarAnimaciones(ruta, nombres, archivo, soloGiros = false) {
+  const otro = await io.read(ruta);
+  revisar(otro, nombres, archivo);
+  const huesos = new Map(documento.getRoot().listNodes().map((n) => [n.getName(), n]));
+  const bufer = documento.getRoot().listBuffers()[0];
+  const copiar = (a) =>
+    documento
+      .createAccessor()
+      .setType(a.getType())
+      .setArray(a.getArray().slice())
+      .setNormalized(a.getNormalized())
+      .setBuffer(bufer);
+  for (const animacion of otro.getRoot().listAnimations()) {
+    if (!nombres.includes(animacion.getName())) continue;
+    const nueva = documento.createAnimation(animacion.getName());
+    for (const canal of animacion.listChannels()) {
+      const ruta = canal.getTargetPath();
+      if (soloGiros && ruta !== 'rotation') continue;
+      const nombre = canal.getTargetNode()?.getName();
+      const hueso = huesos.get(nombre);
+      if (!hueso) {
+        console.error(`${archivo}: ${animacion.getName()} mueve el hueso "${nombre}", que el corredor no tiene`);
+        process.exit(1);
+      }
+      const origenMuestreo = canal.getSampler();
+      const muestreo = documento
+        .createAnimationSampler()
+        .setInterpolation(origenMuestreo.getInterpolation())
+        .setInput(copiar(origenMuestreo.getInput()))
+        .setOutput(copiar(origenMuestreo.getOutput()));
+      nueva.addSampler(muestreo).addChannel(documento.createAnimationChannel().setTargetNode(hueso).setTargetPath(ruta).setSampler(muestreo));
+    }
+  }
+}
+
 /** Borra una animación con sus canales, muestreos y datos (dispose() solo no los suelta y prune no los ve sueltos). */
 function borrarAnimacion(animacion) {
   for (const canal of animacion.listChannels()) canal.dispose();
@@ -46,7 +97,9 @@ function borrarMuestreo(muestreo) {
   muestreo.dispose();
   for (const accesor of datos) if (accesor && accesor.listParents().every((p) => p.propertyType === 'Root')) accesor.dispose();
 }
-for (const animacion of animaciones) if (!CLIPS.has(animacion.getName())) borrarAnimacion(animacion);
+for (const animacion of documento.getRoot().listAnimations()) if (!CLIPS_UAL1.includes(animacion.getName())) borrarAnimacion(animacion);
+await copiarAnimaciones(origen2, CLIPS_UAL2, 'UAL2');
+await copiarAnimaciones(propio, CLIPS_PROPIOS, 'colgar.glb', true);
 
 /**
  * Quita los canales que nunca se apartan de la pose de reposo del hueso (casi todas las escalas y
@@ -95,4 +148,4 @@ documento.createExtension(EXTMeshoptCompression).setRequired(true);
 mkdirSync(dirname(destino), { recursive: true });
 await io.write(destino, documento);
 const kb = (statSync(destino).size / 1024).toFixed(0);
-console.log(`Listo: public/modelos/corredor.glb (${kb} KB, ${CLIPS.size} animaciones).`);
+console.log(`Listo: public/modelos/corredor.glb (${kb} KB, ${TOTAL} animaciones).`);

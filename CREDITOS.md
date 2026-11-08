@@ -27,9 +27,15 @@ El sitio publicado lleva los textos completos de estas licencias en `avance/LICE
 | Recurso | Autor | Enlace | Licencia |
 |---|---|---|---|
 | Maniquí y animaciones del corredor (`public/modelos/corredor.glb`): Universal Animation Library, versión Standard | Quaternius | https://quaternius.com/packs/universalanimationlibrary.html | CC0 1.0 |
+| Más animaciones del corredor (trepar, empujón, escudo roto, doble salto y celebrar): Universal Animation Library 2, versión Standard | Quaternius | https://quaternius.com/packs/universalanimationlibrary2.html | CC0 1.0 |
 
-El corredor es provisional: el personaje final con ropa llega en la etapa 3. El archivo se recorta
-(7 animaciones) y se comprime con `scripts/preparar-corredor.mjs`.
+El corredor es provisional: el personaje final con ropa llega en la etapa 5. El archivo junta
+16 animaciones de los dos paquetes y la propia de colgarse, y se comprime con
+`scripts/preparar-corredor.mjs`.
+
+Piezas propias de NEXO, hechas con los scripts de `scripts/blender/`:
+- la pistola y el dron (`public/modelos/utileria.glb`, con `utileria.py`);
+- la animación `Colgar_Loop` del corredor colgado del cable (con `colgar.py`).
 
 ## Íconos
 
