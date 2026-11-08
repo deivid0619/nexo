@@ -311,19 +311,24 @@ sobre la velocidad.
 3. **Movimientos:** rodar, caída rápida, trepar, balancearse en cables, "¡Justo!", reacciones del
    personaje y una zona de disparo con drones
    (`docs/superpowers/specs/2026-11-07-nexo-etapa-3-movimientos-design.md`).
-4. **Tramos al azar:** la pista se arma distinta en cada partida con piezas diseñadas, siempre con
-   un camino posible; ruta de arriba y de abajo, y chatarra que suma puntos.
-5. **Personaje final:** modelo final (abrigo, capucha y mochila) sobre el mismo esqueleto, con todas
+4. **Mantener y soltar:** gestos de mantener y soltar (colgarse, deslizarse, planear con una lona,
+   tirolesa y disparo cargado), obstáculos animados para el 2D, ruta de arriba y de abajo, trepar
+   más rápido y pulido de animación y entorno
+   (`docs/superpowers/specs/2026-11-07-nexo-etapa-4-mantener-y-soltar-design.md`).
+5. **Tramos al azar:** la pista se arma distinta en cada partida con piezas diseñadas, siempre con
+   un camino posible, y chatarra que suma puntos.
+6. **Personaje final:** modelo final (abrigo, capucha y mochila) sobre el mismo esqueleto, con todas
    las animaciones de las etapas 3 y 4 y la mezcla entre ellas.
-6. **Tierra baldía completa:** criaturas, combate, EMP, punto de control y Centinela con 3 fases.
-7. **Historia:** prólogo, radio, registros y sus pantallas.
-8. **Cristal completo:** su mecánica, sus criaturas e Hidra de cristal con 3 fases.
-9. **Pulido y lanzamiento del Capítulo 1:** postprocesado, rendimiento en celular, sonido, pausa,
-   resultados, ajustes y créditos.
+7. **Tierra baldía completa:** criaturas, combate, EMP, punto de control y Centinela con 3 fases.
+8. **Historia:** prólogo, radio, registros y sus pantallas.
+9. **Cristal completo:** su mecánica, sus criaturas e Hidra de cristal con 3 fases.
+10. **Pulido y lanzamiento del Capítulo 1:** postprocesado, rendimiento en celular, sonido, pausa,
+    resultados, ajustes y créditos.
 
 **Orden actualizado por David (2026-11-07):** eran 7 etapas, con el personaje final en la 3. David
-pidió más movimientos (rodar, trepar, balancearse, disparar) y obstáculos al azar, y aprobó este
-orden de 9 etapas ("perfecto las etapas").
+pidió más movimientos (rodar, trepar, balancearse, disparar) y obstáculos al azar, y aprobó un
+orden de 9 etapas ("perfecto las etapas"). Después pidió mantener y soltar, más obstáculos para el
+2D y pulido de animaciones, y dejó partir la etapa 4 en dos ("pártela como desees"): quedan 10.
 
 Después: Magma, Vacío, Núcleo y el final.
 
