@@ -247,3 +247,153 @@ test('si pierde en el aire, cae hasta el suelo aunque la carrera ya terminó', (
   expect(s.y).toBe(0);
   expect(s.distancia).toBe(distancia);
 });
+
+// Etapa 3: rodar, caída rápida, vigas y "¡Justo!".
+
+/**
+ * Avanza hasta que falten entre `segundos` y `segundos + DT` para que el objeto en `en` toque el
+ * borde del corredor (a `borde` metros). La acción siguiente empieza justo ahí.
+ */
+function correrHastaContacto(s: Simulacion, en: number, borde: number, segundos: number): EventoSim[] {
+  const eventos: EventoSim[] = [];
+  while ((en - (s.distancia + s.velocidad * DT) - borde) / s.velocidad >= segundos) eventos.push(...s.paso(DT));
+  return eventos;
+}
+const BORDE_VALLA = 0.32;
+const BORDE_VIGA = 0.35;
+const justos = (eventos: EventoSim[]) => eventos.filter((e) => e.tipo === 'justo');
+
+test('rodar en el suelo dura 0,7 s y luego vuelve a correr', () => {
+  const s = crearSimulacion(nivel([]));
+  correr(s, 0.5);
+  s.rodar();
+  expect(tipos(s.paso(DT))).toContain('rodar');
+  expect(s.postura).toBe('rodando');
+  correr(s, 0.6);
+  expect(s.postura).toBe('rodando');
+  correr(s, 0.15);
+  expect(s.postura).toBe('corriendo');
+});
+
+test('rodar otra vez en medio vuelve a empezar los 0,7 s', () => {
+  const s = crearSimulacion(nivel([]));
+  s.rodar();
+  correr(s, 0.5);
+  s.rodar();
+  correr(s, 0.5);
+  expect(s.postura).toBe('rodando');
+  correr(s, 0.25);
+  expect(s.postura).toBe('corriendo');
+});
+
+test('saltar en medio del giro lo corta y salta', () => {
+  const s = crearSimulacion(nivel([]));
+  s.rodar();
+  correr(s, 0.2);
+  s.saltar();
+  expect(tipos(s.paso(DT))).toContain('salto');
+  expect(s.postura).toBe('corriendo');
+  expect(s.y).toBeGreaterThan(0);
+});
+
+test('en 3D se cambia de carril rodando', () => {
+  const s = crearSimulacion(nivel([{ en: 2, tipo: 'portal', a: 3 }]));
+  correrHasta(s, 3);
+  s.rodar();
+  s.cambiarCarril(1);
+  expect(s.carril).toBe(1);
+  expect(s.postura).toBe('rodando');
+});
+
+test('una viga golpea de pie y saltando, y se pasa rodando', () => {
+  const dePie = crearSimulacion(nivel([{ en: 10, tipo: 'viga' }]));
+  expect(tipos(correrHasta(dePie, 12))).toContain('golpe');
+  expect(dePie.vidas).toBe(2);
+
+  const rodando = crearSimulacion(nivel([{ en: 10, tipo: 'viga' }]));
+  correrHastaContacto(rodando, 10, BORDE_VIGA, 0.3);
+  rodando.rodar();
+  expect(tipos(correrHasta(rodando, 12))).not.toContain('golpe');
+  expect(rodando.vidas).toBe(3);
+
+  const saltando = crearSimulacion(nivel([{ en: 10, tipo: 'viga' }]));
+  correrHastaContacto(saltando, 10, BORDE_VIGA, 0.3);
+  saltando.saltar();
+  expect(tipos(correrHasta(saltando, 12))).toContain('golpe');
+});
+
+test('con turbo la viga se rompe', () => {
+  const s = crearSimulacion(nivel([{ en: 2, tipo: 'habilidad', clase: 'turbo' }, { en: 20, tipo: 'viga' }]));
+  const eventos = correrHasta(s, 22);
+  expect(tipos(eventos)).toContain('roto');
+  expect(tipos(eventos)).not.toContain('golpe');
+  expect(s.vidas).toBe(3);
+});
+
+test('rodar en el aire es la caída rápida, y al tocar el suelo rueda', () => {
+  const s = crearSimulacion(nivel([]));
+  s.saltar();
+  correr(s, 0.2);
+  s.rodar();
+  expect(s.vy).toBe(-22);
+  expect(s.caidaRapida).toBe(true);
+  const eventos = s.paso(DT);
+  expect(tipos(eventos)).toContain('caida-rapida');
+  const resto = [...eventos];
+  while (s.y > 0) resto.push(...s.paso(DT));
+  resto.push(...s.paso(DT));
+  const t = tipos(resto);
+  expect(t.indexOf('aterrizaje')).toBeGreaterThan(-1);
+  expect(t.indexOf('rodar')).toBeGreaterThan(t.indexOf('aterrizaje'));
+  expect(s.postura).toBe('rodando');
+  expect(s.caidaRapida).toBe(false);
+});
+
+test('después de la caída rápida no hay doble salto hasta tocar el suelo', () => {
+  const s = crearSimulacion(nivel([{ en: 2, tipo: 'habilidad', clase: 'doble' }]));
+  correrHasta(s, 3);
+  s.saltar();
+  correr(s, 0.2);
+  s.rodar();
+  s.paso(DT);
+  s.saltar();
+  expect(tipos(s.paso(DT))).not.toContain('doble-salto');
+});
+
+test('"¡Justo!": saltar una valla en el último momento da 50 puntos', () => {
+  const s = crearSimulacion(nivel([{ en: 20, tipo: 'valla' }]));
+  correrHastaContacto(s, 20, BORDE_VALLA, 0.1);
+  s.saltar();
+  const eventos = correr(s, 1);
+  expect(tipos(eventos)).not.toContain('golpe');
+  expect(justos(eventos)).toEqual([{ tipo: 'justo', puntos: 50 }]);
+  expect(s.puntaje).toBe(Math.floor(s.distancia) + 50);
+});
+
+test('"¡Justo!": saltar con tiempo de sobra no lo da', () => {
+  const s = crearSimulacion(nivel([{ en: 20, tipo: 'valla' }]));
+  correrHastaContacto(s, 20, BORDE_VALLA, 0.5);
+  s.saltar();
+  const eventos = correr(s, 1);
+  expect(tipos(eventos)).not.toContain('golpe');
+  expect(justos(eventos)).toEqual([]);
+  expect(s.puntaje).toBe(Math.floor(s.distancia));
+});
+
+test('"¡Justo!": rodar bajo una viga en el último momento', () => {
+  const s = crearSimulacion(nivel([{ en: 20, tipo: 'viga' }]));
+  correrHastaContacto(s, 20, BORDE_VIGA, 0.1);
+  s.rodar();
+  const eventos = correr(s, 1);
+  expect(tipos(eventos)).not.toContain('golpe');
+  expect(justos(eventos)).toEqual([{ tipo: 'justo', puntos: 50 }]);
+});
+
+test('"¡Justo!": un obstáculo que golpea nunca lo da', () => {
+  const s = crearSimulacion(nivel([{ en: 20, tipo: 'valla' }]));
+  correrHastaContacto(s, 20, BORDE_VALLA, 0.02);
+  s.saltar();
+  const eventos = correr(s, 1);
+  expect(tipos(eventos)).toContain('golpe');
+  expect(justos(eventos)).toEqual([]);
+});

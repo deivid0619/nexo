@@ -1,4 +1,14 @@
 import type { Carril, Evento, Habilidad, Modo, Nivel } from '../datos/niveles/tipos';
+import {
+  alturaCuerpo,
+  BONO_JUSTO,
+  DURACION_RODAR,
+  type Postura,
+  VENTANA_JUSTO_S,
+  VIGA_LIBRE,
+  VIGA_TOPE,
+  VY_CAIDA_RAPIDA,
+} from './movimientos';
 
 // Números del prototipo (metros y segundos), en el documento de diseño y el plan de la etapa 2.
 export const GRAVEDAD = 24;
@@ -19,6 +29,9 @@ export const APARECE_M = 75;
 export const SE_VA_M = -14;
 const BONO_HABILIDAD = 25;
 const BONO_ROTO = 30;
+/** Medio largo de cada obstáculo a lo largo de la pista: el contacto empieza a esta x. */
+const BORDE_VALLA = 0.32;
+const BORDE_VIGA = 0.35;
 
 export type EstadoCarrera = 'corriendo' | 'derrota' | 'fin';
 
@@ -34,7 +47,20 @@ export interface ObjetoPista {
 }
 
 export type EventoSim =
-  | { tipo: 'salto' | 'doble-salto' | 'aterrizaje' | 'carril' | 'derrota' | 'fin' | 'golpe' | 'escudo-roto' }
+  | {
+      tipo:
+        | 'salto'
+        | 'doble-salto'
+        | 'aterrizaje'
+        | 'carril'
+        | 'derrota'
+        | 'fin'
+        | 'golpe'
+        | 'escudo-roto'
+        | 'rodar'
+        | 'caida-rapida';
+    }
+  | { tipo: 'justo'; puntos: number }
   | { tipo: 'portal'; a: Modo }
   | { tipo: 'habilidad'; clase: Habilidad }
   | { tipo: 'roto'; id: number };
@@ -58,10 +84,16 @@ export interface Simulacion {
   readonly habilidades: Readonly<Record<Habilidad, number>>;
   readonly puntaje: number;
   readonly nivel: Nivel;
+  /** Qué hace el cuerpo (en el aire sigue 'corriendo'; mira `y`). */
+  readonly postura: Postura;
+  /** Bajando en caída rápida, hasta tocar el suelo. */
+  readonly caidaRapida: boolean;
   objetos(): readonly ObjetoPista[];
   /** Avanza `dt` segundos; devuelve lo que pasó (incluye lo que causaron las acciones). */
   paso(dt: number): EventoSim[];
   saltar(): void;
+  /** En el suelo rueda; en el aire hace la caída rápida. */
+  rodar(): void;
   cambiarCarril(d: -1 | 1): void;
 }
 
@@ -88,6 +120,15 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
   let pendientes: EventoSim[] = [];
   /** Objetos que ya actuaron (un golpe o un portal cuentan una sola vez). */
   const golpeados = new Set<number>();
+  /** Obstáculos que ya pasaron sin golpe (se revisa una vez si fue "¡Justo!"). */
+  const pasados = new Set<number>();
+  /** Reloj de la carrera, para el "¡Justo!" y la duración del giro. */
+  let tiempo = 0;
+  let postura: Postura = 'corriendo';
+  let finRodar = 0;
+  let caidaRapida = false;
+  let inicioSalto = -Infinity;
+  let inicioRodar = -Infinity;
 
   // Empezar a mitad del tramo (modo de prueba): se aplican los portales que ya habrían pasado.
   const desde = Math.max(0, opciones.desde ?? 0);
@@ -126,15 +167,49 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
     }
   }
 
+  function empezarRodar(): void {
+    postura = 'rodando';
+    finRodar = tiempo + DURACION_RODAR;
+    inicioRodar = tiempo;
+    pendientes.push({ tipo: 'rodar' });
+  }
+
+  /**
+   * La primera vez que un obstáculo queda atrás sin golpe: si el movimiento que lo pasó empezó a lo
+   * sumo VENTANA_JUSTO_S antes del contacto (cuando su x llegó a `borde`), es "¡Justo!".
+   */
+  function pasar(o: ObjetoPista, borde: number, inicio: number): void {
+    if (o.x > 0 || golpeados.has(o.id) || pasados.has(o.id)) return;
+    pasados.add(o.id);
+    const contacto = tiempo - (borde - o.x) / velocidad;
+    if (inicio <= contacto && contacto - inicio <= VENTANA_JUSTO_S) {
+      bono += BONO_JUSTO;
+      pendientes.push({ tipo: 'justo', puntos: BONO_JUSTO });
+    }
+  }
+
   function revisar(o: ObjetoPista): void {
     const e = o.evento;
     if (o.roto || o.tomado) return;
     switch (e.tipo) {
       case 'valla':
-        if (Math.abs(o.x) < 0.32 && y < (e.alto ?? 0.7) - 0.05 && !golpeados.has(o.id)) {
+        if (Math.abs(o.x) < BORDE_VALLA && y < (e.alto ?? 0.7) - 0.05 && !golpeados.has(o.id)) {
           golpeados.add(o.id);
           chocar(o);
         }
+        pasar(o, BORDE_VALLA, inicioSalto);
+        break;
+      case 'viga':
+        if (
+          Math.abs(o.x) < BORDE_VIGA &&
+          y + alturaCuerpo(postura) > VIGA_LIBRE &&
+          y < VIGA_TOPE &&
+          !golpeados.has(o.id)
+        ) {
+          golpeados.add(o.id);
+          chocar(o);
+        }
+        if (!o.roto) pasar(o, BORDE_VIGA, inicioRodar);
         break;
       case 'bloque':
         if (Math.abs(o.x) < 0.75 && Math.abs(z - zCarril(e.carril)) < 0.95 && y < 1.45 && !golpeados.has(o.id)) {
@@ -198,6 +273,12 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
     get puntaje() {
       return Math.floor(distancia) + bono;
     },
+    get postura() {
+      return postura;
+    },
+    get caidaRapida() {
+      return caidaRapida;
+    },
     nivel,
     objetos: () => objetos,
 
@@ -213,6 +294,7 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
         pendientes = [];
         return quedan;
       }
+      tiempo += dt;
       velocidad =
         habilidades.turbo > 0 ? VELOCIDAD_TURBO : Math.min(VELOCIDAD_MAXIMA, VELOCIDAD_BASE + distancia * VELOCIDAD_POR_METRO);
       distancia += velocidad * dt;
@@ -231,8 +313,14 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
         if (enAire) {
           enAire = false;
           pendientes.push({ tipo: 'aterrizaje' });
+          // La caída rápida termina rodando.
+          if (caidaRapida) {
+            caidaRapida = false;
+            empezarRodar();
+          }
         }
       }
+      if (postura === 'rodando' && tiempo >= finRodar - 1e-9) postura = 'corriendo';
       z += (zCarril(modo === 3 ? carril : 0) - z) * Math.min(1, dt * SUAVIZADO_CARRIL);
       invulnerable = Math.max(0, invulnerable - dt);
       for (const k of Object.keys(habilidades) as Habilidad[]) habilidades[k] = Math.max(0, habilidades[k] - dt);
@@ -255,13 +343,28 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
     saltar() {
       if (estado !== 'corriendo') return;
       if (!enAire) {
+        // Saltar corta el giro.
+        postura = 'corriendo';
         vy = SALTO;
         enAire = true;
+        inicioSalto = tiempo;
         pendientes.push({ tipo: 'salto' });
-      } else if (habilidades.doble > 0 && !dobleUsado) {
+      } else if (habilidades.doble > 0 && !dobleUsado && !caidaRapida) {
         vy = DOBLE_SALTO;
         dobleUsado = true;
+        inicioSalto = tiempo;
         pendientes.push({ tipo: 'doble-salto' });
+      }
+    },
+
+    rodar() {
+      if (estado !== 'corriendo') return;
+      if (!enAire) {
+        empezarRodar();
+      } else if (!caidaRapida) {
+        vy = VY_CAIDA_RAPIDA;
+        caidaRapida = true;
+        pendientes.push({ tipo: 'caida-rapida' });
       }
     },
 
