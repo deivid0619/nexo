@@ -3,7 +3,7 @@ import './interfaz/tokens.css';
 import './interfaz/base.css';
 import './interfaz/componentes.css';
 
-import { PerspectiveCamera, Scene, type WebGLRenderer } from 'three';
+import { PerspectiveCamera, Scene, Vector3, type WebGLRenderer } from 'three';
 import { crearAzar } from './nucleo/azar';
 import { crearBucle } from './nucleo/bucle';
 import { crearTierraBaldia } from './mundo/tierra-baldia';
@@ -13,6 +13,7 @@ import { crearCamaraJuego } from './camara/camara-juego';
 import { crearPista } from './mundo/tierra-baldia/pista';
 import { TIERRA_BALDIA } from './mundo/paletas';
 import { cargarCorredor, type Corredor } from './entidades/corredor';
+import { cargarUtileria, type Utileria } from './entidades/utileria';
 import { crearControles } from './entrada/controles';
 import { crearCarrera, type Carrera } from './juego/carrera';
 import { TIERRA_BALDIA_1 } from './datos/niveles/tierra-baldia-1';
@@ -42,6 +43,10 @@ const SEMILLA_MUNDO = 20261106;
 const SEMILLA_PISTA = 20261107;
 /** El corredor CC0 (Quaternius), servido desde public/. */
 const URL_CORREDOR = './modelos/corredor.glb';
+/** La pistola y el dron (piezas propias), servidos desde public/. */
+const URL_UTILERIA = './modelos/utileria.glb';
+/** Altura de la cabeza del corredor sobre sus pies: ahí sale el "¡Justo!". */
+const ALTO_CABEZA = 1.9;
 /** El piso de la carrera de esta etapa: su récord se guarda en el progreso. */
 const PISO_CARRERA: IdPiso = 'tierra';
 /** Lo que dura cada mitad del cambio de pantalla (igual a --d-pantalla en tokens.css). */
@@ -132,7 +137,7 @@ async function arrancar(): Promise<void> {
   const camaraMenu = crearCamaraMenu(camara, { movimientoReducido });
 
   // La carrera: otra escena y otra cámara con el mismo renderizador.
-  const pista = crearPista(calidad, crearAzar(SEMILLA_PISTA));
+  const pista = crearPista(calidad, crearAzar(SEMILLA_PISTA), { movimientoReducido: movimientoReducido() });
   const camaraCarrera = new PerspectiveCamera(62, 2, 0.1, 2200);
   const camaraJuego = crearCamaraJuego(camaraCarrera, { movimientoReducido: movimientoReducido() });
   let aspecto = 2;
@@ -235,6 +240,8 @@ async function arrancar(): Promise<void> {
     return { record: puntaje, nuevo: true };
   }
 
+  /** La cabeza del corredor proyectada con la cámara de la carrera, en píxeles CSS. */
+  const cabeza = new Vector3();
   function armarCarrera(corredor: Corredor): Carrera {
     return crearCarrera({
       nivel: TIERRA_BALDIA_1,
@@ -250,6 +257,15 @@ async function arrancar(): Promise<void> {
           controles.desactivar();
           juego.terminar(r);
         },
+        justo: (puntos, en) => juego.justo(puntos, en),
+        arma: (visible) => juego.arma(visible),
+      },
+      proyectarCorredor() {
+        cabeza.copy(corredor.grupo.position);
+        cabeza.y += ALTO_CABEZA;
+        cabeza.project(camaraCarrera);
+        const r = lienzo.getBoundingClientRect();
+        return { x: r.left + ((cabeza.x + 1) / 2) * r.width, y: r.top + ((1 - cabeza.y) / 2) * r.height };
       },
       avisos,
       vibrar(ms) {
@@ -345,14 +361,25 @@ async function arrancar(): Promise<void> {
 
   // 4. Construir el mundo y la carrera, compilar los sombreadores y dibujar el primer cuadro, con avance real.
   let corredor: Corredor | null = null;
+  let utileria: Utileria | null = null;
   const tareas: Tarea[] = [
     ...(parametros.fallarCarga ? conFalloDePrueba(mundo.pasos) : mundo.pasos),
     ...pista.pasos,
+    {
+      nombre: 'utileria',
+      peso: 1,
+      async correr() {
+        utileria = await cargarUtileria(URL_UTILERIA);
+        pista.usarDron(utileria.dron);
+        pista.usarPistola(utileria.pistola);
+      },
+    },
     {
       nombre: 'corredor',
       peso: 3,
       async correr() {
         corredor = await cargarCorredor(URL_CORREDOR, TIERRA_BALDIA);
+        if (utileria) corredor.ponerArma(utileria.pistola);
         pista.escena.add(corredor.grupo);
       },
     },

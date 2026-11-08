@@ -452,6 +452,53 @@
   color: var(--c-apagado);
 }
 .vida { display: inline-flex; }
+/* Indicador de arma: un chip claro junto a las vidas mientras dura la zona de armas. */
+.chip-arma {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  box-sizing: border-box;
+  min-height: var(--alto-toque);
+  padding: 0 var(--e-5);
+  border-radius: var(--r-panel);
+  background: var(--c-claro);
+  box-shadow: var(--s-activo);
+  color: var(--c-oscuro);
+  font-family: var(--f-etiqueta);
+  font-weight: 600;
+  font-size: var(--t-etiqueta);
+  letter-spacing: var(--l-etiqueta);
+  text-transform: uppercase;
+}
+.chip-arma[hidden] { display: none; }
+.chip-arma svg { font-size: var(--t-vida); }
+/* "¡Justo!": sube desde la cabeza del corredor y se desvanece. No recibe toques. */
+.capa-justo {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.justo {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  font-family: var(--f-etiqueta);
+  font-weight: 600;
+  font-size: var(--t-puntaje);
+  letter-spacing: var(--l-pista);
+  white-space: nowrap;
+  color: var(--c-acento);
+  text-shadow: var(--s-justo);
+  animation: justo-sube .6s ease-out forwards;
+}
+@keyframes justo-sube {
+  from { opacity: 1; transform: translate(-50%, -100%); }
+  to { opacity: 0; transform: translate(-50%, calc(-100% - 2.2rem)); }
+}
+@keyframes justo-quieto {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
 .vida.llena { color: var(--c-claro); }
 .vida.llena svg { fill: currentColor; }
 .hud-puntaje {
@@ -511,6 +558,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .cortina { transition: none; }
+  .justo { animation-name: justo-quieto; }
 }
 
 /* Mensajes del sistema (sin WebGL, contexto perdido) */

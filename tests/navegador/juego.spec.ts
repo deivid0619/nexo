@@ -1,5 +1,20 @@
 import { test, expect, type Page } from '@playwright/test';
+import { TIERRA_BALDIA_1 } from '../../src/datos/niveles/tierra-baldia-1';
 import { abrir } from './ayudas';
+
+// Las posiciones salen del tramo: si cambia, las pruebas lo siguen.
+const EVENTOS = TIERRA_BALDIA_1.eventos;
+const primero = (tipo: string) => EVENTOS.find((e) => e.tipo === tipo)!.en;
+const PORTAL_3D = EVENTOS.find((e) => e.tipo === 'portal' && e.a === 3)!.en;
+const VIGA = primero('viga');
+const CONTENEDOR = primero('contenedor');
+const CONTENEDOR_2 = EVENTOS.filter((e) => e.tipo === 'contenedor')[1].en;
+const FOSO = primero('foso');
+const CABLE = primero('cable');
+const ARMA = primero('arma');
+const EMP = primero('emp');
+/** El primer dron del carril del centro (donde empieza el corredor al pasar a 3D). */
+const DRON_CENTRO = EVENTOS.find((e) => e.tipo === 'dron' && e.carril === 0)!.en;
 
 /** Partida en la Tierra baldía (piso 1), sin récord todavía. */
 const TIERRA = {
@@ -43,6 +58,29 @@ async function centro(page: Page): Promise<{ x: number; y: number }> {
   return { x: v.width / 2, y: v.height / 2 };
 }
 
+/** Avanza hasta que el corredor llega a `d` metros, sin pasarse más de un paso de 1/60 s. */
+async function avanzarHasta(page: Page, d: number): Promise<void> {
+  for (;;) {
+    const j = (await juego(page))!;
+    if (j.estado !== 'corriendo' || j.distancia >= d) return;
+    const falta = d - j.distancia;
+    // Nunca va a más de 12 m/s (sin turbo): con 0,95 no se pasa.
+    await avanzar(page, falta > 1 ? (falta / 12) * 0.95 : 1 / 60);
+  }
+}
+
+/** Desliza un dedo (o el ratón) sobre el lienzo. */
+async function deslizar(page: Page, dx: number, dy: number): Promise<void> {
+  const c = await centro(page);
+  await page.mouse.move(c.x - dx / 2, c.y - dy / 2);
+  await page.mouse.down();
+  await page.mouse.move(c.x + dx / 2, c.y + dy / 2, { steps: 4 });
+  await page.mouse.up();
+}
+
+/** El bono de la carrera: el puntaje menos los metros. */
+const bono = (j: { puntaje: number; distancia: number }) => j.puntaje - Math.floor(j.distancia);
+
 test('Entrar al portal abre la carrera: 3 vidas, distancia 0, en 2D y sin errores', async ({ page }) => {
   const errores = await abrirTorre(page);
   const antes = await page.evaluate(() => history.length);
@@ -70,7 +108,7 @@ test('tocar la pantalla salta y la pista de saltar se va', async ({ page }) => {
 });
 
 test('el portal gira la cámara a 3D y deslizar cambia de carril', async ({ page }) => {
-  await abrirTorre(page, '&desde=80&dios=1');
+  await abrirTorre(page, `&desde=${PORTAL_3D - 5}&dios=1`);
   await entrar(page);
   await avanzar(page, 2);
   const j = (await juego(page))!;
@@ -105,7 +143,7 @@ test('chocar quita vidas; sin vidas aparece la derrota y Reintentar empieza de n
 });
 
 test('llegar al final muestra Tramo superado y guarda el récord del piso', async ({ page }) => {
-  await abrirTorre(page, '&desde=370&dios=1');
+  await abrirTorre(page, `&desde=${TIERRA_BALDIA_1.largo - 25}&dios=1`);
   await entrar(page);
   await avanzar(page, 3);
   expect((await juego(page))!.estado).toBe('fin');
@@ -181,7 +219,7 @@ test('si se pierde el contexto WebGL en la carrera, aparece el velo y luego sigu
 });
 
 test('la carrera dibuja como mucho 150 llamadas por cuadro, en 2D y en 3D', async ({ page }) => {
-  await abrirTorre(page, '&desde=60&dios=1');
+  await abrirTorre(page, `&desde=${PORTAL_3D - 20}&dios=1`);
   await entrar(page);
   await avanzar(page, 0.5);
   const en2d = await page.evaluate(() => window.nexo!.render().llamadas);
@@ -218,4 +256,155 @@ test('el HUD cabe en la pantalla y el botón Salir se puede tocar', async ({ pag
   const izq = (await page.locator('.hud-estado').boundingBox())!;
   const der = (await page.locator('.hud-puntaje').boundingBox())!;
   expect(izq.x + izq.width).toBeLessThan(der.x);
+});
+
+// Etapa 3: los movimientos nuevos en la carrera de verdad.
+test('deslizar hacia abajo rueda: la pista sale antes de la primera viga, se va al rodar y se pasa sin golpe', async ({ page }) => {
+  const errores = await abrirTorre(page, `&desde=${VIGA - 19}`);
+  await entrar(page);
+  await avanzar(page, 1 / 60);
+  await expect(page.locator('.pista-juego')).toHaveText('Desliza hacia abajo para rodar');
+  await avanzarHasta(page, VIGA - 4);
+  await deslizar(page, 0, 120);
+  await avanzar(page, 1 / 60);
+  expect((await juego(page))!.postura).toBe('rodando');
+  await expect(page.locator('.pista-juego')).toBeHidden();
+  await avanzarHasta(page, VIGA + 2);
+  expect((await juego(page))!.vidas).toBe(3);
+  expect(errores).toEqual([]);
+});
+
+test('saltar contra el primer contenedor lo trepa y queda encima con 3 vidas', async ({ page }) => {
+  const errores = await abrirTorre(page, `&desde=${CONTENEDOR - 10}`);
+  await entrar(page);
+  await avanzar(page, 1 / 60);
+  await expect(page.locator('.pista-juego')).toHaveText('Salta contra el muro para trepar');
+  await avanzarHasta(page, CONTENEDOR - 1.2);
+  await page.evaluate(() => window.nexo!.accion('saltar'));
+  await avanzar(page, 0.6);
+  const j = (await juego(page))!;
+  expect(j.y).toBeCloseTo(2, 1);
+  expect(j.vidas).toBe(3);
+  expect(errores).toEqual([]);
+});
+
+test('saltar al cable lo agarra y un toque lo suelta: pasa el foso con 3 vidas', async ({ page }) => {
+  const errores = await abrirTorre(page, `&desde=${CABLE - 10}`);
+  await entrar(page);
+  await avanzar(page, 1 / 60);
+  await expect(page.locator('.pista-juego')).toHaveText('Salta al cable y toca para soltarte');
+  await avanzarHasta(page, CABLE - 1.5);
+  await page.evaluate(() => window.nexo!.accion('saltar'));
+  await avanzar(page, 0.2);
+  expect((await juego(page))!.postura).toBe('colgado');
+  await avanzar(page, 0.6);
+  const c = await centro(page);
+  await page.mouse.click(c.x, c.y);
+  await avanzar(page, 1 / 60);
+  expect((await juego(page))!.postura).toBe('corriendo');
+  await expect(page.locator('.pista-juego')).toBeHidden();
+  await avanzar(page, 1.5);
+  const j = (await juego(page))!;
+  expect(j.distancia).toBeGreaterThan(CABLE + 12);
+  expect(j).toMatchObject({ vidas: 3, y: 0 });
+  expect(errores).toEqual([]);
+});
+
+test('el arma: aviso, indicador y un toque dispara; el dron del carril cae', async ({ page }) => {
+  const errores = await abrirTorre(page, `&desde=${ARMA - 5}`);
+  await entrar(page);
+  await expect(page.locator('.chip-arma')).toBeHidden();
+  await avanzarHasta(page, ARMA + 0.5);
+  await avanzar(page, 1 / 60);
+  await expect(page.locator('.aviso')).toHaveText('Arma lista: toca para disparar');
+  await expect(page.locator('.chip-arma')).toBeVisible();
+  await expect(page.locator('.pista-juego')).toHaveText('Toca para disparar · desliza arriba para saltar');
+  expect(await juego(page)).toMatchObject({ armado: true, pistola: true, y: 0 });
+  const c = await centro(page);
+  await page.mouse.click(c.x, c.y);
+  await avanzar(page, 1 / 60);
+  // Tocar con el arma dispara: no salta y la pista se va.
+  expect((await juego(page))!.y).toBe(0);
+  await expect(page.locator('.pista-juego')).toBeHidden();
+  // Esa sola bala alcanza al primer dron del carril (y se gasta en él).
+  await avanzarHasta(page, DRON_CENTRO + 2);
+  const j = (await juego(page))!;
+  expect(j.vidas).toBe(3);
+  expect(bono(j)).toBe(50);
+  expect(errores).toEqual([]);
+});
+
+test('el pulso EMP se lleva el arma: avisa y el indicador se va', async ({ page }) => {
+  const errores = await abrirTorre(page, `&desde=${EMP - 6}&dios=1`);
+  await entrar(page);
+  await expect(page.locator('.chip-arma')).toBeVisible();
+  await avanzarHasta(page, EMP + 0.5);
+  await avanzar(page, 1 / 60);
+  await expect(page.locator('.aviso')).toHaveText('Pulso EMP: perdiste el arma');
+  await expect(page.locator('.chip-arma')).toBeHidden();
+  expect(await juego(page)).toMatchObject({ armado: false, pistola: false });
+  expect(errores).toEqual([]);
+});
+
+test('un "¡Justo!" muestra el letrero y suma 50', async ({ page }) => {
+  const errores = await abrirTorre(page, `&desde=${CONTENEDOR - 10}`);
+  await entrar(page);
+  await avanzarHasta(page, CONTENEDOR - 0.9);
+  await page.evaluate(() => window.nexo!.accion('saltar'));
+  await avanzar(page, 0.1);
+  await expect(page.locator('.justo')).toHaveText('¡Justo! +50');
+  expect(bono((await juego(page))!)).toBe(50);
+  expect(errores).toEqual([]);
+});
+
+for (const caso of ['armado', 'colgado'] as const) {
+  test(`salir ${caso} y volver a entrar empieza sin arma, corriendo y sin el indicador`, async ({ page }) => {
+    const errores = await abrirTorre(page, `&desde=${caso === 'armado' ? ARMA - 5 : CABLE - 10}`);
+    await entrar(page);
+    if (caso === 'armado') {
+      await avanzarHasta(page, ARMA + 1);
+      expect((await juego(page))!.armado).toBe(true);
+    } else {
+      await avanzarHasta(page, CABLE - 1.5);
+      await page.evaluate(() => window.nexo!.accion('saltar'));
+      await avanzar(page, 0.2);
+      expect((await juego(page))!.postura).toBe('colgado');
+    }
+    await page.keyboard.press('Escape');
+    await llegar(page, 'torre');
+    await entrar(page);
+    await avanzar(page, 1 / 60);
+    expect(await juego(page)).toMatchObject({ postura: 'corriendo', armado: false, pistola: false });
+    await expect(page.locator('.chip-arma')).toBeHidden();
+    expect(errores).toEqual([]);
+  });
+}
+
+test('perder la última vida en un foso es derrota: no reaparece arriba y sale el panel', async ({ page }) => {
+  const errores = await abrirTorre(page, `&desde=${CONTENEDOR - 32}`);
+  await entrar(page);
+  // Sin saltar: la valla alta y el primer contenedor quitan dos vidas.
+  await avanzarHasta(page, CONTENEDOR + 1);
+  expect((await juego(page))!.vidas).toBe(1);
+  // El segundo contenedor se trepa bien; el foso de después, no.
+  await avanzarHasta(page, CONTENEDOR_2 - 1.2);
+  await page.evaluate(() => window.nexo!.accion('saltar'));
+  await avanzarHasta(page, FOSO + 2);
+  await avanzar(page, 1);
+  const j = (await juego(page))!;
+  expect(j).toMatchObject({ estado: 'derrota', vidas: 0, postura: 'foso' });
+  expect(j.y).toBeLessThan(0);
+  await expect(page.locator('.fin-carrera')).toBeVisible();
+  await expect(page.locator('.fin-carrera .titulo')).toHaveText('Sin vidas');
+  expect(errores).toEqual([]);
+});
+
+test('en la zona de drones la carrera dibuja como mucho 150 llamadas por cuadro', async ({ page }) => {
+  const errores = await abrirTorre(page, `&desde=${ARMA + 5}&dios=1`);
+  await entrar(page);
+  await avanzar(page, 1);
+  const n = await page.evaluate(() => window.nexo!.render().llamadas);
+  expect(n).toBeGreaterThan(0);
+  expect(n).toBeLessThanOrEqual(150);
+  expect(errores).toEqual([]);
 });

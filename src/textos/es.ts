@@ -11,6 +11,15 @@ export const TEXTOS = {
     avance: 'Avance del tramo',
     pistaSaltar: 'Toca para saltar',
     pistaCarril: 'Desliza a los lados para cambiar de carril',
+    pistaRodar: 'Desliza hacia abajo para rodar',
+    pistaCaer: 'En el aire, desliza hacia abajo para caer rápido',
+    pistaTrepar: 'Salta contra el muro para trepar',
+    pistaCable: 'Salta al cable y toca para soltarte',
+    pistaDisparar: 'Toca para disparar · desliza arriba para saltar',
+    armaLista: 'Arma lista: toca para disparar',
+    emp: 'Pulso EMP: perdiste el arma',
+    justo: '¡Justo! +{n}',
+    arma: 'Arma',
     portal3d: 'Portal: ahora hay tres carriles',
     portal2d: 'Portal: de vuelta a la vista lateral',
     habilidades: {
@@ -37,6 +46,7 @@ export const TEXTOS = {
     consejos: [
       'Toca la pantalla para saltar.',
       'En 3D, desliza a los lados para cambiar de carril.',
+      'Desliza hacia abajo para rodar.',
       'Si tienes arma, toca para disparar.',
       'El escudo aguanta un golpe.',
       'Antes de cada jefe hay un punto de control.',

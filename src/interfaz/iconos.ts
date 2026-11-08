@@ -14,7 +14,13 @@ export const ICONOS = {
   flechaIzquierda: svg('<path d="M5 12l14 0"/><path d="M5 12l6 6"/><path d="M5 12l6 -6"/>'),
   cerrar: svg('<path d="M18 6l-12 12"/><path d="M6 6l12 12"/>'),
   corazon: svg('<path d="M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.572"/>'),
+  mira: svg(
+    '<path d="M4 8v-2a2 2 0 0 1 2 -2h2"/><path d="M4 16v2a2 2 0 0 0 2 2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M16 20h2a2 2 0 0 0 2 -2v-2"/><path d="M9 12l6 0"/><path d="M12 9l0 6"/>',
+  ),
   girar: svg(
     '<path d="M3 6m0 2a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z"/><path d="M20 11v2"/><path d="M7 12h-.01"/>',
   ),
-} as const satisfies Record<'candado' | 'check' | 'flechaDerecha' | 'flechaIzquierda' | 'cerrar' | 'corazon' | 'girar', string>;
+} as const satisfies Record<
+  'candado' | 'check' | 'flechaDerecha' | 'flechaIzquierda' | 'cerrar' | 'corazon' | 'mira' | 'girar',
+  string
+>;

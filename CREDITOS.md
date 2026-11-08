@@ -41,7 +41,7 @@ Piezas propias de NEXO, hechas con los scripts de `scripts/blender/`:
 
 | Recurso | Autor | Enlace | Licencia |
 |---|---|---|---|
-| Tabler Icons 3.19.0 (lock, check, arrow-right, arrow-left, x, heart, device-mobile-rotated) | Paweł Kuna | https://tabler.io/icons | MIT |
+| Tabler Icons 3.19.0 (lock, check, arrow-right, arrow-left, x, heart, crosshair, device-mobile-rotated) | Paweł Kuna | https://tabler.io/icons | MIT |
 
 ## Prototipo (`prototipo/`)
 

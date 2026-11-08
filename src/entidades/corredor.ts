@@ -127,6 +127,8 @@ export interface Corredor {
   actualizar(dt: number, s: Simulacion, recientes: Recientes): void;
   /** Le da la pistola (se ve en la mano derecha solo mientras la carrera lo tiene armado). */
   ponerArma(pistola: Object3D): void;
+  /** La pistola se ve en la mano ahora. */
+  armaVisible(): boolean;
   /** Vuelve a correr desde el principio (al reintentar). */
   reiniciar(): void;
 }
@@ -331,6 +333,7 @@ export async function cargarCorredor(url: string, paleta: PaletaExterior): Promi
         }
       }
     },
+    armaVisible: () => pistola?.visible ?? false,
     ponerArma(modeloPistola) {
       pistola = modeloPistola.clone();
       pistola.name = 'pistola-corredor';

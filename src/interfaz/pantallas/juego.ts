@@ -34,7 +34,9 @@ export function crearPantallaJuego(deps: Dependencias): PantallaJuego {
     <div class="hud-estado">
       <button type="button" class="boton-icono boton-salir">${ICONOS.cerrar}</button>
       <div class="panel vidas" role="img">${`<span class="vida">${ICONOS.corazon}</span>`.repeat(VIDAS)}</div>
+      <div class="chip-arma" hidden>${ICONOS.mira}<span></span></div>
     </div>
+    <div class="capa-justo" aria-hidden="true"></div>
     <div class="panel hud-puntaje">
       <div class="puntaje" aria-live="off"></div>
       <div class="barra" role="progressbar" aria-valuemin="0" aria-valuemax="100"><div class="barra-relleno"></div></div>
@@ -60,6 +62,18 @@ export function crearPantallaJuego(deps: Dependencias): PantallaJuego {
   barra.setAttribute('aria-label', t.avance);
   const relleno = q('.barra-relleno');
   const pista = q('.pista-juego');
+  const chipArma = q('.chip-arma');
+  q('.chip-arma span').textContent = t.arma;
+  const capaJusto = q('.capa-justo');
+  const textoPista: Record<Exclude<PistaHud, null>, string> = {
+    saltar: t.pistaSaltar,
+    carril: t.pistaCarril,
+    rodar: t.pistaRodar,
+    caer: t.pistaCaer,
+    trepar: t.pistaTrepar,
+    cable: t.pistaCable,
+    disparar: t.pistaDisparar,
+  };
   const fin = q('.fin-carrera');
   q('.fin-carrera .etiqueta').textContent = t.tramo;
   const titulo = q('.fin-carrera .titulo');
@@ -87,6 +101,8 @@ export function crearPantallaJuego(deps: Dependencias): PantallaJuego {
 
     reiniciar() {
       fin.hidden = true;
+      chipArma.hidden = true;
+      capaJusto.replaceChildren();
       ultimo = { vidas: -1, puntaje: -1, avance: -1 };
     },
 
@@ -107,7 +123,22 @@ export function crearPantallaJuego(deps: Dependencias): PantallaJuego {
 
     pista(cual: PistaHud) {
       pista.hidden = cual === null;
-      if (cual) pista.textContent = cual === 'saltar' ? t.pistaSaltar : t.pistaCarril;
+      if (cual) pista.textContent = textoPista[cual];
+    },
+
+    justo(puntos, en) {
+      // Sube y se desvanece (solo se desvanece con movimiento reducido); se borra al terminar.
+      const letrero = document.createElement('div');
+      letrero.className = 'justo';
+      letrero.textContent = t.justo.replace('{n}', String(puntos));
+      letrero.style.left = `${en.x}px`;
+      letrero.style.top = `${en.y}px`;
+      letrero.addEventListener('animationend', () => letrero.remove());
+      capaJusto.append(letrero);
+    },
+
+    arma(visible) {
+      chipArma.hidden = !visible;
     },
 
     terminar(r: ResultadoCarrera) {
