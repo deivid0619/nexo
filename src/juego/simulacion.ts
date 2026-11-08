@@ -1,6 +1,12 @@
 import type { Carril, Evento, Habilidad, Modo, Nivel } from '../datos/niveles/tipos';
 import {
   ALTO_CONTENEDOR,
+  BALA_ALCANCE_M,
+  BALA_MS,
+  BONO_DRON,
+  CADENCIA_S,
+  DRON_ABAJO,
+  DRON_ARRIBA,
   alturaCuerpo,
   alturaVaiven,
   BONO_JUSTO,
@@ -46,6 +52,9 @@ const FONDO_FOSO = -6;
 const ALCANCE_CABLE = 1.2;
 /** Al agarrarse, la altura pasa de la del salto a la del vaivén en esta parte del vaivén. */
 const MEZCLA_AGARRE = 0.2;
+/** Dron: medio largo a lo largo de la pista (choque y disparo) y dónde sale la bala. */
+const BORDE_DRON = 0.6;
+const SALIDA_BALA = 0.7;
 
 export type EstadoCarrera = 'corriendo' | 'derrota' | 'fin';
 
@@ -58,6 +67,13 @@ export interface ObjetoPista {
   roto: boolean;
   /** Una habilidad ya recogida. */
   tomado: boolean;
+}
+
+/** Una bala en vuelo, con su x relativa al corredor. */
+export interface Bala {
+  id: number;
+  x: number;
+  carril: Carril;
 }
 
 export type EventoSim =
@@ -76,12 +92,17 @@ export type EventoSim =
         | 'trepar'
         | 'foso'
         | 'agarre'
-        | 'soltar';
+        | 'soltar'
+        | 'arma'
+        | 'emp'
+        | 'disparo';
     }
   | { tipo: 'justo'; puntos: number }
   | { tipo: 'portal'; a: Modo }
   | { tipo: 'habilidad'; clase: Habilidad }
-  | { tipo: 'roto'; id: number };
+  | { tipo: 'roto'; id: number }
+  /** Un dron derribado por una bala. */
+  | { tipo: 'dron'; id: number };
 
 export interface Simulacion {
   readonly estado: EstadoCarrera;
@@ -110,6 +131,9 @@ export interface Simulacion {
   readonly suelo: number | null;
   /** Colgado del cable: el avance del vaivén, de 0 a 1; si no, null. */
   readonly vaiven: number | null;
+  /** Tiene la pistola (entre la estación de armas y el EMP). */
+  readonly armado: boolean;
+  balas(): readonly Bala[];
   objetos(): readonly ObjetoPista[];
   /** Avanza `dt` segundos; devuelve lo que pasó (incluye lo que causaron las acciones). */
   paso(dt: number): EventoSim[];
@@ -118,6 +142,8 @@ export interface Simulacion {
   rodar(): void;
   /** Suelta el cable (si está colgado). */
   soltar(): void;
+  /** Dispara si tiene el arma y pasó la cadencia. */
+  disparar(): void;
   cambiarCarril(d: -1 | 1): void;
 }
 
@@ -161,20 +187,33 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
   // Cable: cuándo se agarró y a qué altura.
   let inicioColgado = 0;
   let yAgarre = 0;
-
-  // Empezar a mitad del tramo (modo de prueba): se aplican los portales que ya habrían pasado.
-  const desde = Math.max(0, opciones.desde ?? 0);
-  while (siguiente < nivel.eventos.length && nivel.eventos[siguiente].en < desde) {
-    const e = nivel.eventos[siguiente++];
-    if (e.tipo === 'portal') modo = e.a;
-  }
-  distancia = desde;
+  // Zona de armas: el arma, la espera entre disparos y las balas en vuelo (con su x en la pista).
+  let armado = false;
+  let cadencia = 0;
+  let ultimaBala = 0;
+  let balas: (Bala & { en: number; salida: number; gastada: boolean })[] = [];
 
   const zCarril = (c: Carril | undefined) => (c ?? 0) * ANCHO_CARRIL;
   /** El cuerpo cae dentro del ancho del contenedor (en 2D siempre). */
   const alLado = (c: Carril | undefined) => modo === 2 || Math.abs(z - zCarril(c)) < MEDIO_ANCHO_CONTENEDOR;
   /** Largo de un obstáculo a lo largo de la pista (0 si es puntual). */
   const largoDe = (e: Evento) => ('largo' in e ? e.largo : 0);
+
+  // Empezar a mitad del tramo (modo de prueba): se aplica lo que ya habría pasado (portales, arma y
+  // EMP) y se arranca en un estado posible: pasado el foso o encima del contenedor que haya ahí.
+  const desde = Math.max(0, opciones.desde ?? 0);
+  distancia = desde;
+  while (siguiente < nivel.eventos.length && nivel.eventos[siguiente].en < desde) {
+    const e = nivel.eventos[siguiente++];
+    if (e.tipo === 'portal') modo = e.a;
+    else if (e.tipo === 'arma') armado = true;
+    else if (e.tipo === 'emp') armado = false;
+    else if (e.tipo === 'foso' && e.en + e.largo > distancia) distancia = e.en + e.largo;
+    else if (e.tipo === 'contenedor' && e.en + e.largo >= desde) {
+      objetos.push({ id: ++ultimoId, evento: e, x: e.en - distancia, roto: false, tomado: false });
+    }
+  }
+  if (sueloBajo() === ALTO_CONTENEDOR) y = ALTO_CONTENEDOR;
 
   /** Lo que hay bajo el centro del corredor: 0, el techo de un contenedor o null sobre un foso. */
   function sueloBajo(): number | null {
@@ -435,7 +474,56 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
           pendientes.push({ tipo: 'portal', a: e.a });
         }
         break;
+      case 'arma':
+        if (o.x <= 0 && !golpeados.has(o.id)) {
+          golpeados.add(o.id);
+          armado = true;
+          pendientes.push({ tipo: 'arma' });
+        }
+        break;
+      case 'emp':
+        if (o.x <= 0 && !golpeados.has(o.id)) {
+          golpeados.add(o.id);
+          armado = false;
+          balas = [];
+          cadencia = 0;
+          pendientes.push({ tipo: 'emp' });
+        }
+        break;
+      case 'dron':
+        if (
+          Math.abs(o.x) < BORDE_DRON &&
+          Math.abs(z - zCarril(e.carril)) < 0.95 &&
+          y + alturaCuerpo(postura) > DRON_ABAJO &&
+          y < DRON_ARRIBA &&
+          !golpeados.has(o.id)
+        ) {
+          golpeados.add(o.id);
+          chocar(o);
+        }
+        break;
     }
+  }
+
+  /** Las balas avanzan en la pista; la primera que alcanza a un dron de su carril lo derriba. */
+  function moverBalas(dt: number): void {
+    for (const b of balas) {
+      const antes = b.en;
+      b.en += BALA_MS * dt;
+      for (const o of objetos) {
+        const e = o.evento;
+        if (e.tipo !== 'dron' || o.roto || e.carril !== b.carril) continue;
+        if (antes <= e.en + BORDE_DRON && b.en >= e.en - BORDE_DRON) {
+          o.roto = true;
+          b.gastada = true;
+          bono += BONO_DRON;
+          pendientes.push({ tipo: 'dron', id: o.id });
+          break;
+        }
+      }
+      b.x = b.en - distancia;
+    }
+    balas = balas.filter((b) => !b.gastada && b.en - b.salida < BALA_ALCANCE_M);
   }
 
   const sim: Simulacion = {
@@ -484,6 +572,10 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
     get suelo() {
       return sueloBajo();
     },
+    get armado() {
+      return armado;
+    },
+    balas: () => balas,
     get vaiven() {
       return postura === 'colgado' ? avanceVaiven() : null;
     },
@@ -519,11 +611,13 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
       z += (zCarril(modo === 3 ? carril : 0) - z) * Math.min(1, dt * SUAVIZADO_CARRIL);
       invulnerable = Math.max(0, invulnerable - dt);
       for (const k of Object.keys(habilidades) as Habilidad[]) habilidades[k] = Math.max(0, habilidades[k] - dt);
+      cadencia = Math.max(0, cadencia - dt);
 
       for (const o of objetos) {
         o.x = o.evento.en - distancia;
         if (estado === 'corriendo') revisar(o);
       }
+      moverBalas(dt);
       objetos = objetos.filter((o) => o.x + largoDe(o.evento) >= SE_VA_M);
 
       if (estado === 'corriendo' && distancia >= nivel.largo) {
@@ -570,6 +664,14 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
 
     soltar() {
       if (estado === 'corriendo' && postura === 'colgado') soltarCable();
+    },
+
+    disparar() {
+      if (estado !== 'corriendo' || !armado || cadencia > 0) return;
+      cadencia = CADENCIA_S;
+      const en = distancia + SALIDA_BALA;
+      balas.push({ id: ++ultimaBala, x: SALIDA_BALA, carril, en, salida: en, gastada: false });
+      pendientes.push({ tipo: 'disparo' });
     },
 
     cambiarCarril(d) {

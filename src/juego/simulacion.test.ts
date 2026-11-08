@@ -771,3 +771,135 @@ test('colgado, rodar y cambiar de carril no hacen nada', () => {
   expect(s.postura).toBe('colgado');
   expect(s.caidaRapida).toBe(false);
 });
+
+// Etapa 3: arma, disparos, drones y EMP.
+
+/** Una zona de armas en 3D: arma a 10 m, drones a 40 m (carril 0) y 60 m (carril 1), EMP a 90 m. */
+const ZONA: Evento[] = [
+  { en: 2, tipo: 'portal', a: 3 },
+  { en: 10, tipo: 'arma' },
+  { en: 40, tipo: 'dron', carril: 0 },
+  { en: 60, tipo: 'dron', carril: 1 },
+  { en: 90, tipo: 'emp' },
+];
+const dronEn = (s: Simulacion, en: number) => s.objetos().find((o) => o.evento.tipo === 'dron' && o.evento.en === en)!;
+
+test('pasar la estación da el arma', () => {
+  const s = crearSimulacion(nivel(ZONA));
+  expect(s.armado).toBe(false);
+  expect(tipos(correrHasta(s, 11))).toContain('arma');
+  expect(s.armado).toBe(true);
+});
+
+test('sin arma, disparar no hace nada', () => {
+  const s = crearSimulacion(nivel(ZONA));
+  correrHasta(s, 5);
+  s.disparar();
+  expect(tipos(s.paso(DT))).not.toContain('disparo');
+  expect(s.balas()).toHaveLength(0);
+});
+
+test('con arma, cada disparo saca una bala por el carril, con cadencia de 0,15 s', () => {
+  const s = crearSimulacion(nivel(ZONA));
+  correrHasta(s, 11);
+  s.cambiarCarril(1);
+  s.disparar();
+  const eventos = s.paso(DT);
+  expect(tipos(eventos)).toContain('disparo');
+  expect(s.balas()).toHaveLength(1);
+  expect(s.balas()[0].carril).toBe(1);
+  correr(s, 0.05);
+  s.disparar();
+  expect(tipos(s.paso(DT))).not.toContain('disparo');
+  expect(s.balas()).toHaveLength(1);
+  correr(s, 0.1);
+  s.disparar();
+  expect(tipos(s.paso(DT))).toContain('disparo');
+  expect(s.balas()).toHaveLength(2);
+});
+
+test('la bala se va a los 45 m', () => {
+  const s = crearSimulacion(nivel(ZONA));
+  correrHasta(s, 11);
+  s.cambiarCarril(-1);
+  s.disparar();
+  correr(s, 1.0);
+  expect(s.balas()).toHaveLength(1);
+  correr(s, 0.2);
+  expect(s.balas()).toHaveLength(0);
+});
+
+test('una bala en su carril derriba al dron: +50 y queda roto', () => {
+  const s = crearSimulacion(nivel(ZONA));
+  correrHasta(s, 12);
+  const dron = dronEn(s, 40);
+  s.disparar();
+  const eventos = correr(s, 1.2);
+  expect(eventos).toContainEqual({ tipo: 'dron', id: dron.id });
+  expect(dron.roto).toBe(true);
+  expect(s.puntaje).toBe(Math.floor(s.distancia) + 50);
+  expect(tipos(correrHasta(s, 42))).not.toContain('golpe');
+});
+
+test('una bala en otro carril no lo toca', () => {
+  const s = crearSimulacion(nivel(ZONA));
+  correrHasta(s, 41);
+  const dron = dronEn(s, 60);
+  s.disparar();
+  const eventos = correrHasta(s, 70);
+  expect(eventos.filter((e) => e.tipo === 'dron')).toEqual([]);
+  expect(dron.roto).toBe(false);
+});
+
+test('chocar un dron quita una vida; rodando se pasa por debajo', () => {
+  const choca = crearSimulacion(nivel(ZONA));
+  expect(tipos(correrHasta(choca, 42))).toContain('golpe');
+  expect(choca.vidas).toBe(2);
+
+  const rueda = crearSimulacion(nivel(ZONA));
+  correrHastaContacto(rueda, 40, 0.6, 0.2);
+  rueda.rodar();
+  expect(tipos(correrHasta(rueda, 42))).not.toContain('golpe');
+  expect(rueda.vidas).toBe(3);
+});
+
+test('con turbo el dron se rompe al chocarlo', () => {
+  const s = crearSimulacion(nivel([...ZONA.slice(0, 2), { en: 30, tipo: 'habilidad', clase: 'turbo', carril: 0 }, ...ZONA.slice(2)]));
+  const eventos = correrHasta(s, 42);
+  expect(tipos(eventos)).toContain('roto');
+  expect(tipos(eventos)).not.toContain('golpe');
+});
+
+test('el EMP quita el arma y borra las balas en vuelo', () => {
+  const s = crearSimulacion(nivel(ZONA));
+  correrHasta(s, 89);
+  s.disparar();
+  s.paso(DT);
+  expect(s.balas()).toHaveLength(1);
+  expect(tipos(correrHasta(s, 91))).toContain('emp');
+  expect(s.armado).toBe(false);
+  expect(s.balas()).toHaveLength(0);
+});
+
+test('desde dentro de la zona empieza armado; después del EMP, no', () => {
+  expect(crearSimulacion(nivel(ZONA), { desde: 20 }).armado).toBe(true);
+  expect(crearSimulacion(nivel(ZONA), { desde: 95 }).armado).toBe(false);
+});
+
+test('desde en medio de un foso empieza pasado el borde, de pie', () => {
+  const s = crearSimulacion(nivel([{ en: 20, tipo: 'foso', largo: 3 }]), { desde: 21 });
+  expect(s.distancia).toBeGreaterThanOrEqual(23);
+  const eventos = correr(s, 0.3);
+  expect(tipos(eventos)).not.toContain('foso');
+  expect(s.y).toBe(0);
+  expect(s.postura).toBe('corriendo');
+});
+
+test('desde en medio de un contenedor empieza encima', () => {
+  const s = crearSimulacion(nivel([{ en: 20, tipo: 'contenedor', largo: 10 }]), { desde: 24 });
+  expect(s.y).toBe(2);
+  const eventos = correr(s, 0.3);
+  expect(tipos(eventos)).not.toContain('trepar');
+  expect(tipos(eventos)).not.toContain('golpe');
+  expect(s.y).toBe(2);
+});

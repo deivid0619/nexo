@@ -34,6 +34,15 @@ export const VAIVEN_S = 1.0;
 export const FRANJA_BUENA: readonly [number, number] = [0.6, 1.0];
 export const CENTRO_FRANJA: readonly [number, number] = [0.75, 0.85];
 
+/** Zona de armas: el dron ocupa de 1 a 1,6 m de alto (rodando se pasa por debajo). */
+export const DRON_ABAJO = 1.0;
+export const DRON_ARRIBA = 1.6;
+/** Balas: velocidad, espera entre disparos y alcance, como en el prototipo. */
+export const BALA_MS = 40;
+export const CADENCIA_S = 0.15;
+export const BALA_ALCANCE_M = 45;
+export const BONO_DRON = 50;
+
 /** Altura de los pies a lo largo del vaivén: sube de 1,2 m (cerca de donde se agarra al saltar) a 2,4 m. */
 export function alturaVaiven(u: number): number {
   const k = Math.min(1, Math.max(0, u));
