@@ -74,3 +74,14 @@ test('reiniciar(2) vuelve a la vista lateral al instante', () => {
   control.reiniciar(2);
   expect(control.mezcla()).toBe(0);
 });
+
+test('en 3D la cámara no baja al foso', () => {
+  const suelo = preparar();
+  const foso = preparar();
+  suelo.control.reiniciar(3);
+  foso.control.reiniciar(3);
+  suelo.control.actualizar(DT, { modo: 3, z: 0, y: 0 }, ASPECTO);
+  foso.control.actualizar(DT, { modo: 3, z: 0, y: -2 }, ASPECTO);
+  expect(foso.camara.position.y).toBeCloseTo(suelo.camara.position.y, 9);
+  expect(mirada(foso.camara).y).toBeCloseTo(mirada(suelo.camara).y, 9);
+});

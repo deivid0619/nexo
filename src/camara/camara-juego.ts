@@ -38,9 +38,10 @@ export function crearCamaraJuego(camara: PerspectiveCamera, opciones: { movimien
       const fov3 = aspecto < 1 ? FOV_DETRAS_VERTICAL : FOV_DETRAS;
       p2.set(3.5, 2.2, DISTANCIA_LATERAL);
       l2.set(3.5, 1.6, 0);
-      // Detrás: acompaña un poco el salto para no perder al personaje por arriba.
-      p3.set(-5.5, 3.4 + s.y * 0.3, s.z * 0.6);
-      l3.set(7, 1.2 + s.y * 0.2, s.z * 0.4);
+      // Detrás: acompaña un poco el salto para no perder al personaje por arriba. No baja al foso.
+      const alto = Math.max(0, s.y);
+      p3.set(-5.5, 3.4 + alto * 0.3, s.z * 0.6);
+      l3.set(7, 1.2 + alto * 0.2, s.z * 0.4);
       camara.position.lerpVectors(p2, p3, e);
       mira.lerpVectors(l2, l3, e);
       if (sacudida > 0) {

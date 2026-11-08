@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { posicionDecorado } from './pista';
+import { MAX, posicionDecorado, puntaCable } from './pista';
 
 const CICLO = 240;
 
@@ -31,4 +31,20 @@ test('solo salta al dar la vuelta al ciclo', () => {
     anterior = x;
   }
   expect(vueltas).toBe(3);
+});
+
+test('puntaCable: colgado llega a la mano del corredor; si no, cuelga recto hacia abajo', () => {
+  expect(puntaCable([10, 18], 14.8, [0, 3.5])).toEqual([0, 3.5]);
+  const recto = puntaCable([10, 18], 14.8, null);
+  expect(recto[0]).toBe(10);
+  expect(recto[1]).toBeCloseTo(3.2, 9);
+});
+
+test('hay lugar para los obstáculos nuevos de la etapa 3', () => {
+  expect(MAX.vigas).toBeGreaterThanOrEqual(8);
+  expect(MAX.contenedores).toBeGreaterThanOrEqual(6);
+  expect(MAX.fosos).toBeGreaterThanOrEqual(4);
+  expect(MAX.cables).toBeGreaterThanOrEqual(3);
+  expect(MAX.drones).toBeGreaterThanOrEqual(12);
+  expect(MAX.balas).toBeGreaterThanOrEqual(16);
 });

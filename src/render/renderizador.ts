@@ -12,7 +12,13 @@ export class ErrorSinWebGL extends Error {
 export function crearRenderizador(lienzo: HTMLCanvasElement, calidad: Calidad): WebGLRenderer {
   let renderer: WebGLRenderer;
   try {
-    renderer = new WebGLRenderer({ canvas: lienzo, antialias: calidad.antialias, powerPreference: 'high-performance' });
+    // stencil: la boca de los fosos lo marca para que el suelo no se dibuje ahí.
+    renderer = new WebGLRenderer({
+      canvas: lienzo,
+      antialias: calidad.antialias,
+      powerPreference: 'high-performance',
+      stencil: true,
+    });
   } catch (e) {
     throw new ErrorSinWebGL(e);
   }

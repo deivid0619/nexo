@@ -1,5 +1,7 @@
 import {
   AdditiveBlending,
+  AlwaysStencilFunc,
+  BackSide,
   BoxGeometry,
   CanvasTexture,
   CapsuleGeometry,
@@ -7,14 +9,19 @@ import {
   Color,
   CylinderGeometry,
   DynamicDrawUsage,
+  Float32BufferAttribute,
   Group,
+  IcosahedronGeometry,
   InstancedMesh,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
+  NotEqualStencilFunc,
   Object3D,
   PlaneGeometry,
+  Quaternion,
   RepeatWrapping,
+  ReplaceStencilOp,
   SRGBColorSpace,
   Scene,
   TorusGeometry,
@@ -22,6 +29,7 @@ import {
   type BufferGeometry,
   type Material,
 } from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { Habilidad } from '../../datos/niveles/tipos';
 import { ANCHO_CARRIL, type Simulacion } from '../../juego/simulacion';
 import type { Calidad } from '../../render/calidad';
@@ -42,7 +50,43 @@ const TRAMO_TEXTURA = 20;
 /** La torre: lejos, hacia donde se corre. Se ve al girar a 3D y no se acerca nunca. */
 const POSICION_TORRE = new Vector3(330, 0, -40);
 const COLOR_HABILIDAD: Record<Habilidad, string> = { escudo: '#7FD6DC', turbo: '#E8A84A', doble: '#F4EFE7' };
-const MAX = { vallas: 12, bloques: 16, habilidades: 6, portales: 2 };
+export const MAX = {
+  vallas: 12,
+  bloques: 16,
+  habilidades: 6,
+  portales: 2,
+  vigas: 8,
+  contenedores: 6,
+  fosos: 4,
+  cables: 3,
+  armas: 2,
+  drones: 12,
+  destellos: 6,
+  emps: 2,
+  balas: 16,
+};
+/** Grúa del cable: el pivote está alto sobre el borde del foso y el asa cuelga a 3,2 m. */
+const ALTO_PIVOTE = 18;
+const LARGO_CABLE = 14.8;
+/** Las manos del corredor colgado, sobre sus pies. */
+const MANOS_SOBRE_PIES = 2.05;
+const PROFUNDIDAD_FOSO = 6.5;
+/** El hueco cruza la carretera y la arena de los lados. */
+const ANCHO_HUECO = 14;
+/** Contenedor: ancho en 2D (sin carril) y en un carril de 3D. */
+const ANCHO_CONTENEDOR_2D = 2.4;
+const ANCHO_CONTENEDOR_3D = 1.5;
+const ALTO_BALA = 1.3;
+const DESTELLO_S = 0.25;
+const LINEAS_EMP = 7;
+
+/**
+ * El extremo de abajo del cable en la vista lateral (x, y): la mano del corredor mientras cuelga,
+ * o `largo` metros recto hacia abajo desde el pivote si no. Función pura (probada).
+ */
+export function puntaCable(pivote: [number, number], largo: number, mano: [number, number] | null): [number, number] {
+  return mano ? [mano[0], mano[1]] : [pivote[0], pivote[1] - largo];
+}
 
 /**
  * Dónde va un elemento del decorado que se recicla: avanza hacia −x con la carrera y vuelve a
@@ -59,6 +103,10 @@ export interface Pista {
   /** `mezcla`: 0 = vista lateral, 1 = detrás del personaje (de la cámara de la carrera). */
   actualizar(dt: number, t: number, s: Simulacion, mezcla: number): void;
   llamadasMaximas: number;
+  /** Arma los drones con el modelo de la utilería (antes de eso no se dibujan). */
+  usarDron(modelo: Object3D): void;
+  /** La pistola que gira sobre la estación de armas. */
+  usarPistola(modelo: Object3D): void;
 }
 
 function lienzo(ancho: number, alto: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
@@ -135,6 +183,45 @@ function texturaArena(p: PaletaExterior, azar: () => number): CanvasTexture {
   return textura(c, 60, 60);
 }
 
+/** Chapa corrugada de contenedor: blanca, para teñirla con el color de cada uno. */
+function texturaContenedor(): CanvasTexture {
+  const [c, g] = lienzo(256, 128);
+  g.fillStyle = '#ffffff';
+  g.fillRect(0, 0, 256, 128);
+  for (let x = 0; x < 256; x += 8) {
+    g.fillStyle = 'rgba(0,0,0,0.16)';
+    g.fillRect(x, 0, 3, 128);
+    g.fillStyle = 'rgba(255,255,255,0.10)';
+    g.fillRect(x + 4, 0, 1, 128);
+  }
+  g.fillStyle = 'rgba(0,0,0,0.28)';
+  g.fillRect(0, 0, 256, 7);
+  g.fillRect(0, 118, 256, 10);
+  g.fillStyle = 'rgba(60,30,10,0.25)';
+  for (let i = 0; i < 9; i++) g.fillRect((i * 53) % 256, 100 + (i % 3) * 5, 18 + (i % 4) * 9, 18);
+  const t = new CanvasTexture(c);
+  t.colorSpace = SRGBColorSpace;
+  return t;
+}
+
+/** Le pone a una geometría un color de vértice parejo (para juntar piezas de colores en una malla). */
+function pintar(geo: BufferGeometry, color: string): BufferGeometry {
+  const c = new Color(color);
+  const n = geo.getAttribute('position').count;
+  const datos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) datos.set([c.r, c.g, c.b], i * 3);
+  geo.setAttribute('color', new Float32BufferAttribute(datos, 3));
+  return geo;
+}
+
+/** El suelo no se dibuja donde un hueco marcó el stencil (la boca de un foso). */
+function conHuecos<T extends Material>(m: T): T {
+  m.stencilWrite = true;
+  m.stencilRef = 1;
+  m.stencilFunc = NotEqualStencilFunc;
+  return m;
+}
+
 /** Sombra suave bajo el corredor. */
 function texturaSombra(): CanvasTexture {
   const [c, g] = lienzo(64, 64);
@@ -158,7 +245,7 @@ interface Decorado {
 }
 
 /** La escena de la carrera: la carretera rota hacia la torre, entre ruinas, al atardecer. */
-export function crearPista(calidad: Calidad, azar: () => number): Pista {
+export function crearPista(calidad: Calidad, azar: () => number, opciones: { movimientoReducido?: boolean } = {}): Pista {
   const paleta = TIERRA_BALDIA;
   const escena = new Scene();
   escena.name = 'pista';
@@ -174,6 +261,39 @@ export function crearPista(calidad: Calidad, azar: () => number): Pista {
   const desplazables: CanvasTexture[] = [];
   let suelo: CanvasTexture | null = null;
   let sombraCorredor: Mesh | null = null;
+  // Etapa 3: los obstáculos de los movimientos y la zona de armas.
+  const nuevas: InstancedMesh[] = [];
+  let mallaVigas: InstancedMesh | null = null;
+  let mallaContenedores: InstancedMesh | null = null;
+  let mallaHuecos: InstancedMesh | null = null;
+  let mallaInteriores: InstancedMesh | null = null;
+  let mallaBordes: InstancedMesh | null = null;
+  let mallaGruas: InstancedMesh | null = null;
+  let mallaCables: InstancedMesh | null = null;
+  let mallaAsas: InstancedMesh | null = null;
+  let mallaEstaciones: InstancedMesh | null = null;
+  let mallaLuces: InstancedMesh | null = null;
+  let mallaArmas: InstancedMesh | null = null;
+  let mallaDrones: InstancedMesh | null = null;
+  let mallaDestellos: InstancedMesh | null = null;
+  let mallaEmp: InstancedMesh | null = null;
+  let mallaBalas: InstancedMesh | null = null;
+  /** Drones derribados: cuándo empezó su destello (se borra al empezar otra carrera). */
+  const destellos = new Map<number, number>();
+  let simAnterior: Simulacion | null = null;
+
+  function instanciada(geo: BufferGeometry, material: Material, cantidad: number, sombra = true): InstancedMesh {
+    const malla = new InstancedMesh(geo, material, cantidad);
+    malla.castShadow = sombra;
+    malla.receiveShadow = sombra;
+    malla.instanceMatrix.setUsage(DynamicDrawUsage);
+    malla.frustumCulled = false;
+    malla.count = 0;
+    malla.visible = false;
+    escena.add(malla);
+    nuevas.push(malla);
+    return malla;
+  }
 
   function decorado(geo: BufferGeometry, material: Material, cantidad: number, ubicar: (i: number) => Decorado['bases'][number], colores?: readonly string[]): Decorado {
     const malla = conSombra(new InstancedMesh(geo, material, cantidad));
@@ -209,7 +329,7 @@ export function crearPista(calidad: Calidad, azar: () => number): Pista {
       peso: 1,
       correr() {
         suelo = texturaArena(paleta, azar);
-        const arena = conSombra(new Mesh(new PlaneGeometry(900, 900), new MeshStandardMaterial({ map: suelo, roughness: 1 })), false);
+        const arena = conSombra(new Mesh(new PlaneGeometry(900, 900), conHuecos(new MeshStandardMaterial({ map: suelo, roughness: 1 }))), false);
         arena.rotation.x = -Math.PI / 2;
         arena.position.y = -0.02;
         escena.add(arena);
@@ -218,14 +338,14 @@ export function crearPista(calidad: Calidad, azar: () => number): Pista {
         const carriles = texturaCarriles(paleta);
         desplazables.push(asfalto, carriles);
         const carretera = conSombra(
-          new Mesh(new PlaneGeometry(LARGO_CARRETERA, ANCHO_CARRETERA), new MeshStandardMaterial({ map: asfalto, roughness: 0.95 })),
+          new Mesh(new PlaneGeometry(LARGO_CARRETERA, ANCHO_CARRETERA), conHuecos(new MeshStandardMaterial({ map: asfalto, roughness: 0.95 }))),
           false,
         );
         carretera.rotation.x = -Math.PI / 2;
         carretera.position.set(LARGO_CARRETERA / 2 - DETRAS_M, 0, 0);
         escena.add(carretera);
 
-        materialCarriles = new MeshBasicMaterial({ map: carriles, transparent: true, opacity: 0, depthWrite: false });
+        materialCarriles = conHuecos(new MeshBasicMaterial({ map: carriles, transparent: true, opacity: 0, depthWrite: false }));
         const marcas = new Mesh(new PlaneGeometry(LARGO_CARRETERA, ANCHO_CARRETERA), materialCarriles);
         marcas.rotation.x = -Math.PI / 2;
         marcas.position.set(LARGO_CARRETERA / 2 - DETRAS_M, 0.01, 0);
@@ -320,6 +440,105 @@ export function crearPista(calidad: Calidad, azar: () => number): Pista {
       },
     },
     {
+      nombre: 'pista-movimientos',
+      peso: 1,
+      correr() {
+        const color = new Color();
+        // Viga: cartel caído de 1,1 a 3,3 m que cruza la carretera, sobre dos postes.
+        const anchoViga = ANCHO_CARRETERA;
+        const viga = mergeGeometries([
+          pintar(new BoxGeometry(0.3, 2.2, anchoViga).translate(0, 2.2, 0), paleta.carroceria),
+          pintar(new BoxGeometry(0.34, 0.14, anchoViga + 0.1).translate(0, 1.17, 0), paleta.postes),
+          pintar(new BoxGeometry(0.34, 0.14, anchoViga + 0.1).translate(0, 3.23, 0), paleta.postes),
+          pintar(new BoxGeometry(0.32, 0.5, anchoViga * 0.7).translate(0.01, 2.2, 0), paleta.metal),
+          pintar(new CylinderGeometry(0.1, 0.12, 3.4, 8).translate(0, 1.7, anchoViga / 2 + 0.3), paleta.postes),
+          pintar(new CylinderGeometry(0.1, 0.12, 3.4, 8).translate(0, 1.7, -anchoViga / 2 - 0.3), paleta.postes),
+        ]);
+        mallaVigas = instanciada(viga, new MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.3 }), MAX.vigas);
+
+        // Contenedor: 2 m de alto; el origen en el frente, abajo y al centro.
+        mallaContenedores = instanciada(
+          new BoxGeometry(1, 2, 1).translate(0.5, 1, 0),
+          new MeshStandardMaterial({ map: texturaContenedor(), roughness: 0.75, metalness: 0.25 }),
+          MAX.contenedores,
+        );
+        mallaContenedores.setColorAt(0, color.set(paleta.carroceria));
+
+        // Foso: la boca marca el stencil antes que el suelo; el suelo no se dibuja ahí.
+        const boca = new MeshBasicMaterial({ colorWrite: false, depthWrite: false, depthTest: false });
+        boca.stencilWrite = true;
+        boca.stencilRef = 1;
+        boca.stencilFunc = AlwaysStencilFunc;
+        boca.stencilZPass = ReplaceStencilOp;
+        mallaHuecos = instanciada(
+          new PlaneGeometry(1, ANCHO_HUECO).rotateX(-Math.PI / 2).translate(0.5, 0.01, 0),
+          boca,
+          MAX.fosos,
+          false,
+        );
+        mallaHuecos.renderOrder = -1;
+        // El interior: una caja oscura vista por dentro, más negra hacia el fondo.
+        const interior = new BoxGeometry(1, PROFUNDIDAD_FOSO, ANCHO_HUECO).translate(0.5, -PROFUNDIDAD_FOSO / 2, 0);
+        const posiciones = interior.getAttribute('position');
+        const arriba = new Color(paleta.arenaOscura).multiplyScalar(0.45);
+        const fondo = new Color('#0B0907');
+        const tonos = new Float32Array(posiciones.count * 3);
+        for (let i = 0; i < posiciones.count; i++) {
+          const k = Math.min(1, -posiciones.getY(i) / PROFUNDIDAD_FOSO);
+          const c = arriba.clone().lerp(fondo, k);
+          tonos.set([c.r, c.g, c.b], i * 3);
+        }
+        interior.setAttribute('color', new Float32BufferAttribute(tonos, 3));
+        mallaInteriores = instanciada(interior, new MeshBasicMaterial({ vertexColors: true, side: BackSide }), MAX.fosos, false);
+        // Bordes de asfalto roto en las dos orillas.
+        mallaBordes = instanciada(
+          new BoxGeometry(0.35, 0.12, ANCHO_CARRETERA + 0.4),
+          new MeshStandardMaterial({ color: paleta.asfalto, roughness: 1 }),
+          MAX.fosos * 2,
+        );
+
+        // Grúa del cable: poste al fondo de la carretera y brazo hasta el pivote, sobre el borde.
+        const grua = mergeGeometries([
+          pintar(new CylinderGeometry(0.16, 0.22, ALTO_PIVOTE + 0.8, 8).translate(-1.5, (ALTO_PIVOTE + 0.8) / 2, -3.6), paleta.postes),
+          pintar(new BoxGeometry(0.3, 0.3, 3.9).translate(-1.5, ALTO_PIVOTE + 0.5, -1.8), paleta.carroceria),
+          pintar(new BoxGeometry(1.8, 0.3, 0.3).translate(-0.75, ALTO_PIVOTE + 0.5, 0), paleta.carroceria),
+          pintar(new CylinderGeometry(0.25, 0.25, 0.2, 12).rotateX(Math.PI / 2).translate(0, ALTO_PIVOTE + 0.2, 0), paleta.metal),
+        ]);
+        mallaGruas = instanciada(grua, new MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.35 }), MAX.cables);
+        mallaCables = instanciada(
+          new CylinderGeometry(0.035, 0.035, 1, 6).translate(0, 0.5, 0),
+          new MeshStandardMaterial({ color: paleta.postes, roughness: 0.6, metalness: 0.5 }),
+          MAX.cables,
+        );
+        mallaAsas = instanciada(
+          new BoxGeometry(0.08, 0.08, 0.6),
+          new MeshStandardMaterial({ color: paleta.metal, roughness: 0.5, metalness: 0.6 }),
+          MAX.cables,
+        );
+
+        // Estación de armas: panel al costado con la luz celeste de la torre.
+        const panel = mergeGeometries([
+          pintar(new BoxGeometry(0.5, 1.5, 1.1).translate(0, 0.75, 0), paleta.metal),
+          pintar(new BoxGeometry(0.6, 0.12, 1.2).translate(0, 1.55, 0), paleta.postes),
+        ]);
+        mallaEstaciones = instanciada(panel, new MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.45 }), MAX.armas);
+        mallaLuces = instanciada(
+          new BoxGeometry(0.52, 0.12, 0.9).translate(0, 1.25, 0),
+          new MeshBasicMaterial({ color: paleta.torreLuz }),
+          MAX.armas,
+          false,
+        );
+
+        // Destello de un dron derribado, EMP y balas: luz celeste sin sombra.
+        const luz = () =>
+          new MeshBasicMaterial({ color: paleta.torreLuz, transparent: true, opacity: 0.85, blending: AdditiveBlending, depthWrite: false });
+        mallaDestellos = instanciada(new IcosahedronGeometry(0.5, 1), luz(), MAX.destellos, false);
+        mallaEmp = instanciada(new BoxGeometry(0.05, 3.2, 0.05).translate(0, 1.6, 0), luz(), MAX.emps * LINEAS_EMP, false);
+        mallaEmp.setColorAt(0, color.set('#ffffff'));
+        mallaBalas = instanciada(new BoxGeometry(0.6, 0.06, 0.06), luz(), MAX.balas, false);
+      },
+    },
+    {
       nombre: 'pista-torre',
       peso: 1,
       correr() {
@@ -350,11 +569,125 @@ export function crearPista(calidad: Calidad, azar: () => number): Pista {
   }
 
   const colorHabilidad = new Color();
+  const colorInstancia = new Color();
+  const arribaY = new Vector3(0, 1, 0);
+  const haciaPivote = new Vector3();
+  const giro = new Quaternion();
+  const coloresContenedor = [paleta.carroceria, ...paleta.tintes.slice(1, 4), paleta.metal];
+
+  /** Pone una instancia con posición, escala y giro (en y y en z). */
+  function poner(malla: InstancedMesh, x: number, y: number, z: number, sx = 1, sy = 1, sz = 1, giroY = 0, giroZ = 0): number {
+    ayudante.position.set(x, y, z);
+    ayudante.rotation.set(0, giroY, giroZ);
+    ayudante.scale.set(sx, sy, sz);
+    ayudante.updateMatrix();
+    malla.setMatrixAt(malla.count, ayudante.matrix);
+    return malla.count++;
+  }
+
+  /** El cable de la grúa, de su punta (abajo) al pivote. */
+  function ponerCable(malla: InstancedMesh, punta: [number, number], pivote: [number, number]): void {
+    haciaPivote.set(pivote[0] - punta[0], pivote[1] - punta[1], 0);
+    const largo = haciaPivote.length();
+    giro.setFromUnitVectors(arribaY, haciaPivote.normalize());
+    ayudante.position.set(punta[0], punta[1], 0);
+    ayudante.quaternion.copy(giro);
+    ayudante.scale.set(1, largo, 1);
+    ayudante.updateMatrix();
+    malla.setMatrixAt(malla.count++, ayudante.matrix);
+  }
+
+  /** Los obstáculos de la etapa 3, la zona de armas y las balas. */
+  function moverMovimientos(t: number, s: Simulacion): void {
+    if (s !== simAnterior) {
+      destellos.clear();
+      simAnterior = s;
+    }
+    for (const m of nuevas) m.count = 0;
+    const quieto = opciones.movimientoReducido ?? false;
+    for (const o of s.objetos()) {
+      const e = o.evento;
+      if (e.tipo === 'viga' && mallaVigas && !o.roto && mallaVigas.count < MAX.vigas) {
+        poner(mallaVigas, o.x, 0, 0);
+      } else if (e.tipo === 'contenedor' && mallaContenedores && mallaContenedores.count < MAX.contenedores) {
+        const ancho = e.carril === undefined ? ANCHO_CONTENEDOR_2D : ANCHO_CONTENEDOR_3D;
+        const i = poner(mallaContenedores, o.x, 0, (e.carril ?? 0) * ANCHO_CARRIL, e.largo, 1, ancho);
+        mallaContenedores.setColorAt(i, colorInstancia.set(coloresContenedor[o.id % coloresContenedor.length]));
+      } else if (e.tipo === 'foso' && mallaHuecos && mallaInteriores && mallaBordes && mallaHuecos.count < MAX.fosos) {
+        poner(mallaHuecos, o.x, 0, 0, e.largo);
+        poner(mallaInteriores, o.x, 0, 0, e.largo);
+        poner(mallaBordes, o.x, -0.03, 0, 1, 1, 1, 0, 0.12);
+        poner(mallaBordes, o.x + e.largo, -0.03, 0, 1, 1, 1, 0, -0.12);
+      } else if (e.tipo === 'cable' && mallaGruas && mallaCables && mallaAsas && mallaGruas.count < MAX.cables) {
+        const pivote: [number, number] = [o.x, ALTO_PIVOTE];
+        const colgado = s.postura === 'colgado' && o.x <= 0.5 && o.x > -20;
+        const punta = puntaCable(pivote, LARGO_CABLE, colgado ? [0, s.y + MANOS_SOBRE_PIES] : null);
+        poner(mallaGruas, o.x, 0, 0);
+        ponerCable(mallaCables, punta, pivote);
+        poner(mallaAsas, punta[0], punta[1], 0);
+      } else if (e.tipo === 'arma' && mallaEstaciones && mallaLuces && mallaEstaciones.count < MAX.armas) {
+        poner(mallaEstaciones, o.x, 0, -(ANCHO_CARRETERA / 2 + 0.7));
+        poner(mallaLuces, o.x, 0, -(ANCHO_CARRETERA / 2 + 0.7));
+        // La pistola gira sobre la carretera hasta que el corredor la toma.
+        if (mallaArmas && o.x > 0) poner(mallaArmas, o.x, 1.3, 0, 2.4, 2.4, 2.4, quieto ? 0.6 : t * 2.5);
+      } else if (e.tipo === 'dron') {
+        if (!o.roto) {
+          if (mallaDrones && mallaDrones.count < MAX.drones) {
+            const vaiven = quieto ? 0 : Math.sin(t * 5 + o.id) * 0.1;
+            poner(mallaDrones, o.x, 1.3 + vaiven, e.carril * ANCHO_CARRIL, 1, 1, 1, 0, vaiven * 0.6);
+          }
+        } else if (mallaDestellos) {
+          if (!destellos.has(o.id)) destellos.set(o.id, t);
+          const k = (t - destellos.get(o.id)!) / DESTELLO_S;
+          if (k < 1 && mallaDestellos.count < MAX.destellos) {
+            const tam = quieto ? 1 : 0.5 + k * 1.3;
+            poner(mallaDestellos, o.x, 1.3, e.carril * ANCHO_CARRIL, tam, tam, tam);
+          }
+        }
+      } else if (e.tipo === 'emp' && mallaEmp && mallaEmp.count < MAX.emps * LINEAS_EMP) {
+        for (let j = 0; j < LINEAS_EMP; j++) {
+          const z = -2.4 + (4.8 * j) / (LINEAS_EMP - 1);
+          const brillo = quieto ? 0.8 : 0.3 + azar() * 0.7;
+          const i = poner(mallaEmp, o.x, 0, z, 1, quieto ? 1 : 0.7 + azar() * 0.3);
+          mallaEmp.setColorAt(i, colorInstancia.setScalar(brillo));
+        }
+      }
+    }
+    if (mallaBalas) {
+      for (const b of s.balas()) {
+        if (mallaBalas.count >= MAX.balas) break;
+        poner(mallaBalas, b.x, ALTO_BALA, b.carril * ANCHO_CARRIL);
+      }
+    }
+    for (const m of nuevas) {
+      m.visible = m.count > 0;
+      m.instanceMatrix.needsUpdate = true;
+      if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    }
+  }
+
+  /** Copia la geometría y el material de la primera malla de un modelo de la utilería. */
+  function mallaDe(modelo: Object3D): Mesh {
+    let fuente: Mesh | null = modelo instanceof Mesh ? modelo : null;
+    modelo.traverse((o) => {
+      if (!fuente && o instanceof Mesh) fuente = o;
+    });
+    if (!fuente) throw new Error(`el modelo "${modelo.name}" no trae una malla`);
+    return fuente;
+  }
 
   return {
     escena,
     pasos,
     llamadasMaximas: LLAMADAS_MAXIMAS,
+    usarDron(modelo) {
+      const fuente = mallaDe(modelo);
+      mallaDrones = instanciada(fuente.geometry, fuente.material as Material, MAX.drones);
+    },
+    usarPistola(modelo) {
+      const fuente = mallaDe(modelo);
+      mallaArmas = instanciada(fuente.geometry, fuente.material as Material, MAX.armas);
+    },
     actualizar(_dt, t, s, mezcla) {
       const d = s.distancia;
       for (const tex of desplazables) tex.offset.x = d / TRAMO_TEXTURA;
@@ -366,10 +699,16 @@ export function crearPista(calidad: Calidad, azar: () => number): Pista {
         if (dec.malla.visible) moverDecorado(dec, d);
       }
       if (sombraCorredor) {
-        sombraCorredor.position.z = s.z;
-        const escala = Math.max(0.4, 1 - s.y * 0.35);
-        sombraCorredor.scale.set(escala, escala, escala);
+        // La sombra sigue al suelo de debajo (2 m encima de un contenedor) y no se ve sobre un foso.
+        const piso = s.suelo;
+        sombraCorredor.visible = piso !== null;
+        if (piso !== null) {
+          sombraCorredor.position.set(0, piso + 0.02, s.z);
+          const escala = Math.max(0.4, 1 - (s.y - piso) * 0.35);
+          sombraCorredor.scale.set(escala, escala, escala);
+        }
       }
+      moverMovimientos(t, s);
 
       if (mallaVallas && mallaBloques && mallaTapas && mallaHabilidades) {
         mallaVallas.count = mallaBloques.count = mallaTapas.count = mallaHabilidades.count = 0;
