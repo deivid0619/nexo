@@ -37,3 +37,14 @@ test('el sitio sirve el corredor 3D de la carrera', async ({ request }) => {
   // Un GLB empieza con la palabra "glTF".
   expect((await respuesta.body()).subarray(0, 4).toString('ascii')).toBe('glTF');
 });
+
+test('el sitio sirve la utilería (pistola y dron)', async ({ request }) => {
+  const respuesta = await request.get('/avance/modelos/utileria.glb');
+  expect(respuesta.ok()).toBe(true);
+  expect((await respuesta.body()).subarray(0, 4).toString('ascii')).toBe('glTF');
+});
+
+test('las licencias nombran las dos bibliotecas de animación de Quaternius', async ({ request }) => {
+  const texto = await (await request.get('/avance/LICENCIAS.txt')).text();
+  expect(texto).toContain('Universal Animation Library 2');
+});

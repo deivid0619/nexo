@@ -30,7 +30,7 @@ El sitio publicado lleva los textos completos de estas licencias en `avance/LICE
 | Más animaciones del corredor (trepar, empujón, escudo roto, doble salto y celebrar): Universal Animation Library 2, versión Standard | Quaternius | https://quaternius.com/packs/universalanimationlibrary2.html | CC0 1.0 |
 
 El corredor es provisional: el personaje final con ropa llega en la etapa 5. El archivo junta
-16 animaciones de los dos paquetes y la propia de colgarse, y se comprime con
+16 animaciones (15 de los dos paquetes y la propia de colgarse) y se comprime con
 `scripts/preparar-corredor.mjs`.
 
 Piezas propias de NEXO, hechas con los scripts de `scripts/blender/`:

@@ -45,11 +45,15 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.`;
 // El corredor (modelos/corredor.glb) es CC0: no exige aviso, pero se nombra al autor.
-const QUATERNIUS = `Universal Animation Library (Standard), por Quaternius
+const QUATERNIUS = `Universal Animation Library y Universal Animation Library 2 (Standard), por Quaternius
 https://quaternius.com/packs/universalanimationlibrary.html
+https://quaternius.com/packs/universalanimationlibrary2.html
 
 Licencia: CC0 1.0 Universal (dominio público). No exige atribución.
-https://creativecommons.org/publicdomain/zero/1.0/`;
+https://creativecommons.org/publicdomain/zero/1.0/
+
+La pistola y el dron (modelos/utileria.glb) y la animación Colgar_Loop del corredor son propios
+de NEXO.`;
 const partes = [
   ['three.js (MIT)', licencia('three')],
   ['Syncopate, por @fontsource/syncopate (Apache-2.0)', licencia('@fontsource/syncopate')],
