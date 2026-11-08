@@ -397,3 +397,258 @@ test('"¡Justo!": un obstáculo que golpea nunca lo da', () => {
   expect(tipos(eventos)).toContain('golpe');
   expect(justos(eventos)).toEqual([]);
 });
+
+// Etapa 3: suelo variable (contenedores y fosos).
+
+const BORDE_CONTENEDOR = 0.3;
+const cuantos = (eventos: EventoSim[], tipo: EventoSim['tipo']) => eventos.filter((e) => e.tipo === tipo).length;
+/** Salta 0,1 s antes de tocar el frente del contenedor y espera a que termine de trepar. */
+function treparContenedor(s: Simulacion, en: number): EventoSim[] {
+  const eventos = correrHastaContacto(s, en, BORDE_CONTENEDOR, 0.1);
+  s.saltar();
+  eventos.push(...correr(s, 0.6));
+  return eventos;
+}
+
+test('saltar contra un contenedor lo trepa en 0,45 s, sin golpe', () => {
+  const s = crearSimulacion(nivel([{ en: 20, tipo: 'contenedor', largo: 10 }]));
+  const eventos = correrHastaContacto(s, 20, BORDE_CONTENEDOR, 0.1);
+  s.saltar();
+  while (s.postura !== 'trepando' && s.distancia < 21) eventos.push(...s.paso(DT));
+  expect(tipos(eventos)).toContain('trepar');
+  expect(s.postura).toBe('trepando');
+  eventos.push(...correr(s, 0.47));
+  expect(s.y).toBe(2);
+  expect(s.postura).toBe('corriendo');
+  expect(s.suelo).toBe(2);
+  expect(tipos(eventos)).not.toContain('golpe');
+  expect(s.vidas).toBe(3);
+});
+
+test('llegar por el suelo a un contenedor golpea y sube en 0,8 s', () => {
+  const s = crearSimulacion(nivel([{ en: 20, tipo: 'contenedor', largo: 12 }]));
+  const eventos = correrHasta(s, 19.5);
+  while (s.postura !== 'trepando' && s.distancia < 21) eventos.push(...s.paso(DT));
+  expect(tipos(eventos)).toEqual(expect.arrayContaining(['golpe', 'trepar']));
+  expect(s.vidas).toBe(2);
+  correr(s, 0.7);
+  expect(s.postura).toBe('trepando');
+  correr(s, 0.15);
+  expect(s.postura).toBe('corriendo');
+  expect(s.y).toBe(2);
+});
+
+test('por el suelo con escudo rompe el escudo y sube; con turbo sube sin golpe', () => {
+  const escudo = crearSimulacion(
+    nivel([
+      { en: 2, tipo: 'habilidad', clase: 'escudo' },
+      { en: 20, tipo: 'contenedor', largo: 12 },
+    ]),
+  );
+  const e1 = correrHasta(escudo, 29);
+  expect(tipos(e1)).toEqual(expect.arrayContaining(['escudo-roto', 'trepar']));
+  expect(escudo.vidas).toBe(3);
+  expect(escudo.y).toBe(2);
+
+  const turbo = crearSimulacion(
+    nivel([
+      { en: 2, tipo: 'habilidad', clase: 'turbo' },
+      { en: 20, tipo: 'contenedor', largo: 12 },
+    ]),
+  );
+  const e2 = correrHasta(turbo, 29);
+  expect(tipos(e2)).toContain('trepar');
+  expect(tipos(e2)).not.toContain('golpe');
+  expect(turbo.vidas).toBe(3);
+  expect(turbo.y).toBe(2);
+});
+
+test('encima del contenedor se salta (vuelve a 2) y se rueda', () => {
+  const s = crearSimulacion(nivel([{ en: 20, tipo: 'contenedor', largo: 12 }]));
+  treparContenedor(s, 20);
+  expect(s.y).toBe(2);
+  s.saltar();
+  const eventos = s.paso(DT);
+  while (s.y > 2) eventos.push(...s.paso(DT));
+  expect(tipos(eventos)).toEqual(expect.arrayContaining(['salto', 'aterrizaje']));
+  expect(s.y).toBe(2);
+  s.rodar();
+  s.paso(DT);
+  expect(s.postura).toBe('rodando');
+  expect(s.y).toBe(2);
+});
+
+test('al pasar el final del contenedor cae al suelo sin saltar', () => {
+  const s = crearSimulacion(nivel([{ en: 20, tipo: 'contenedor', largo: 6 }]));
+  treparContenedor(s, 20);
+  const eventos = correrHasta(s, 31);
+  expect(tipos(eventos)).toContain('aterrizaje');
+  expect(tipos(eventos)).not.toContain('salto');
+  expect(s.y).toBe(0);
+  expect(s.suelo).toBe(0);
+});
+
+test('con doble salto se cae encima del contenedor, sin trepar ni golpe', () => {
+  const s = crearSimulacion(
+    nivel([
+      { en: 2, tipo: 'habilidad', clase: 'doble' },
+      { en: 30, tipo: 'contenedor', largo: 10 },
+    ]),
+  );
+  correrHasta(s, 24);
+  s.saltar();
+  const eventos = correr(s, 0.35);
+  s.saltar();
+  eventos.push(...correrHasta(s, 34));
+  expect(tipos(eventos)).not.toContain('trepar');
+  expect(tipos(eventos)).not.toContain('golpe');
+  expect(s.y).toBe(2);
+});
+
+test('"¡Justo!" al trepar: saltar 0,1 s antes de tocar el frente sí, 0,5 s antes no', () => {
+  const justo = crearSimulacion(nivel([{ en: 20, tipo: 'contenedor', largo: 10 }]));
+  expect(justos(treparContenedor(justo, 20))).toEqual([{ tipo: 'justo', puntos: 50 }]);
+
+  const temprano = crearSimulacion(nivel([{ en: 20, tipo: 'contenedor', largo: 10 }]));
+  const eventos = correrHastaContacto(temprano, 20, BORDE_CONTENEDOR, 0.5);
+  temprano.saltar();
+  eventos.push(...correr(temprano, 1));
+  expect(tipos(eventos)).toContain('trepar');
+  expect(justos(eventos)).toEqual([]);
+});
+
+test('3D: un contenedor en el carril 1 no afecta al carril 0', () => {
+  const s = crearSimulacion(
+    nivel([
+      { en: 2, tipo: 'portal', a: 3 },
+      { en: 20, tipo: 'contenedor', largo: 6, carril: 1 },
+    ]),
+  );
+  const eventos = correrHasta(s, 30);
+  expect(tipos(eventos)).not.toContain('trepar');
+  expect(tipos(eventos)).not.toContain('golpe');
+  expect(s.y).toBe(0);
+});
+
+test('3D: cambiar de carril encima de un contenedor hace caer al suelo', () => {
+  const s = crearSimulacion(
+    nivel([
+      { en: 2, tipo: 'portal', a: 3 },
+      { en: 20, tipo: 'contenedor', largo: 12, carril: 0 },
+    ]),
+  );
+  treparContenedor(s, 20);
+  expect(s.y).toBe(2);
+  s.cambiarCarril(1);
+  const eventos = correr(s, 0.6);
+  expect(tipos(eventos)).toContain('aterrizaje');
+  expect(tipos(eventos)).not.toContain('salto');
+  expect(s.y).toBe(0);
+});
+
+test('3D: cambiar de carril contra el costado de un contenedor da un solo golpe y sube', () => {
+  const s = crearSimulacion(
+    nivel([
+      { en: 2, tipo: 'portal', a: 3 },
+      { en: 20, tipo: 'contenedor', largo: 12, carril: 1 },
+    ]),
+  );
+  correrHasta(s, 21);
+  s.cambiarCarril(1);
+  const eventos = correr(s, 1);
+  expect(cuantos(eventos, 'golpe')).toBe(1);
+  expect(tipos(eventos)).toContain('trepar');
+  expect(s.vidas).toBe(2);
+  expect(s.y).toBe(2);
+  expect(s.carril).toBe(1);
+});
+
+test('3D: rodar o cambiar de carril mientras trepa no cambia nada', () => {
+  const s = crearSimulacion(
+    nivel([
+      { en: 2, tipo: 'portal', a: 3 },
+      { en: 20, tipo: 'contenedor', largo: 12, carril: 0 },
+    ]),
+  );
+  correrHastaContacto(s, 20, BORDE_CONTENEDOR, 0.1);
+  s.saltar();
+  while (s.postura !== 'trepando' && s.distancia < 21) s.paso(DT);
+  s.rodar();
+  s.cambiarCarril(1);
+  const eventos = s.paso(DT);
+  expect(tipos(eventos)).not.toContain('rodar');
+  expect(tipos(eventos)).not.toContain('carril');
+  expect(s.postura).toBe('trepando');
+  expect(s.carril).toBe(0);
+  correr(s, 0.5);
+  expect(s.y).toBe(2);
+  expect(s.postura).toBe('corriendo');
+});
+
+test('foso corto: saltándolo no pasa nada', () => {
+  const s = crearSimulacion(nivel([{ en: 20, tipo: 'foso', largo: 3 }]));
+  correrHastaContacto(s, 20, 0, 0.25);
+  s.saltar();
+  const eventos = correrHasta(s, 26);
+  expect(tipos(eventos)).not.toContain('foso');
+  expect(tipos(eventos)).not.toContain('golpe');
+  expect(s.vidas).toBe(3);
+});
+
+test('foso corto: sin saltar se cae, quita una vida y reaparece al otro lado', () => {
+  const s = crearSimulacion(nivel([{ en: 20, tipo: 'foso', largo: 3 }]));
+  const eventos = correrHasta(s, 21);
+  expect(s.suelo).toBeNull();
+  expect(tipos(eventos)).toEqual(expect.arrayContaining(['foso', 'golpe']));
+  expect(s.vidas).toBe(2);
+  expect(s.postura).toBe('foso');
+  expect(s.y).toBeLessThan(0);
+  // En el foso no se salta ni se rueda.
+  s.saltar();
+  s.rodar();
+  const dentro = s.paso(DT);
+  expect(tipos(dentro)).not.toContain('salto');
+  expect(tipos(dentro)).not.toContain('rodar');
+  expect(s.postura).toBe('foso');
+  correrHasta(s, 23.2);
+  expect(s.y).toBe(0);
+  expect(s.postura).toBe('corriendo');
+  expect(s.invulnerable).toBeGreaterThan(1.3);
+});
+
+test('foso corto: con escudo rompe el escudo; el turbo no lo evita', () => {
+  const escudo = crearSimulacion(
+    nivel([
+      { en: 2, tipo: 'habilidad', clase: 'escudo' },
+      { en: 20, tipo: 'foso', largo: 3 },
+    ]),
+  );
+  expect(tipos(correrHasta(escudo, 24))).toEqual(expect.arrayContaining(['foso', 'escudo-roto']));
+  expect(escudo.vidas).toBe(3);
+
+  const turbo = crearSimulacion(
+    nivel([
+      { en: 2, tipo: 'habilidad', clase: 'turbo' },
+      { en: 20, tipo: 'foso', largo: 3 },
+    ]),
+  );
+  expect(tipos(correrHasta(turbo, 24))).toContain('foso');
+  expect(turbo.vidas).toBe(2);
+});
+
+test('perder la última vida en un foso es derrota y el corredor no vuelve arriba', () => {
+  const s = crearSimulacion(
+    nivel([
+      { en: 20, tipo: 'foso', largo: 3 },
+      { en: 45, tipo: 'foso', largo: 3 },
+      { en: 70, tipo: 'foso', largo: 3 },
+    ]),
+  );
+  const eventos = correrHasta(s, 80);
+  expect(tipos(eventos)).toContain('derrota');
+  expect(s.estado).toBe('derrota');
+  expect(s.vidas).toBe(0);
+  correr(s, 1);
+  expect(s.y).toBeLessThan(0);
+  expect(s.postura).toBe('foso');
+});

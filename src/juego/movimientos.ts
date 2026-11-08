@@ -21,3 +21,9 @@ export type Postura = 'corriendo' | 'rodando' | 'trepando' | 'colgado' | 'foso';
 export function alturaCuerpo(p: Postura): number {
   return p === 'rodando' ? ALTURA_RODANDO : ALTURA_DE_PIE;
 }
+
+/** Contenedor: alto, lo que tarda en treparse (saltando o llegando por el suelo) y su medio ancho en z. */
+export const ALTO_CONTENEDOR = 2;
+export const DURACION_TREPAR = 0.45;
+export const DURACION_TREPAR_GOLPE = 0.8;
+export const MEDIO_ANCHO_CONTENEDOR = 0.75;
