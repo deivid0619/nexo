@@ -652,3 +652,122 @@ test('perder la última vida en un foso es derrota y el corredor no vuelve arrib
   expect(s.y).toBeLessThan(0);
   expect(s.postura).toBe('foso');
 });
+
+// Etapa 3: el cable sobre un foso largo.
+
+/** Un foso de 12 m con su cable, a `en` metros; desde un poco antes para probar a 9 y a 12 m/s. */
+const conCable = (en: number) =>
+  crearSimulacion(
+    nivel(
+      [
+        { en, tipo: 'foso', largo: 12 },
+        { en, tipo: 'cable' },
+      ],
+      en + 100,
+    ),
+    { desde: en - 10 },
+  );
+/** Salta 0,3 s antes del borde y espera a agarrarse del cable. */
+function colgarse(s: Simulacion, en: number): EventoSim[] {
+  const eventos = correrHastaContacto(s, en, 0, 0.3);
+  s.saltar();
+  while (s.postura !== 'colgado' && s.distancia < en + 2) eventos.push(...s.paso(DT));
+  return eventos;
+}
+/** Espera a que el vaivén llegue a `u`, suelta y sigue hasta pasar el foso. */
+function soltarEn(s: Simulacion, en: number, u: number): EventoSim[] {
+  const eventos: EventoSim[] = [];
+  while ((s.vaiven ?? 1) < u) eventos.push(...s.paso(DT));
+  s.soltar();
+  eventos.push(...correrHasta(s, en + 26));
+  return eventos;
+}
+const VELOCIDADES = [
+  { nombre: '9 m/s', en: 20 },
+  { nombre: '12 m/s', en: 620 },
+];
+
+test('saltar hacia el cable lo agarra y se balancea hacia arriba', () => {
+  const s = conCable(20);
+  const eventos = colgarse(s, 20);
+  expect(tipos(eventos)).toContain('agarre');
+  expect(s.postura).toBe('colgado');
+  const u0 = s.vaiven!;
+  const y0 = s.y;
+  correr(s, 0.5);
+  expect(s.vaiven!).toBeGreaterThan(u0);
+  expect(s.y).toBeGreaterThan(y0);
+  expect(s.velocidad).toBeGreaterThan(9);
+});
+
+test('llegar al cable por el suelo cae al foso', () => {
+  const s = conCable(20);
+  const eventos = correrHasta(s, 22);
+  expect(tipos(eventos)).not.toContain('agarre');
+  expect(tipos(eventos)).toEqual(expect.arrayContaining(['foso', 'golpe']));
+});
+
+for (const { nombre, en } of VELOCIDADES) {
+  test(`cable a ${nombre}: soltar en el centro de la franja pasa y da "¡Justo!"`, () => {
+    const s = conCable(en);
+    colgarse(s, en);
+    const eventos = soltarEn(s, en, 0.8);
+    expect(tipos(eventos)).toContain('soltar');
+    expect(tipos(eventos)).not.toContain('foso');
+    expect(justos(eventos)).toEqual([{ tipo: 'justo', puntos: 50 }]);
+    expect(s.vidas).toBe(3);
+    expect(s.y).toBe(0);
+  });
+
+  test(`cable a ${nombre}: soltar al principio de la franja pasa sin "¡Justo!"`, () => {
+    const s = conCable(en);
+    colgarse(s, en);
+    const eventos = soltarEn(s, en, 0.65);
+    expect(tipos(eventos)).not.toContain('foso');
+    expect(justos(eventos)).toEqual([]);
+    expect(s.vidas).toBe(3);
+  });
+
+  test(`cable a ${nombre}: soltar muy pronto cae al foso`, () => {
+    const s = conCable(en);
+    colgarse(s, en);
+    const eventos = soltarEn(s, en, 0.3);
+    expect(tipos(eventos)).toEqual(expect.arrayContaining(['foso', 'golpe']));
+    expect(s.vidas).toBe(2);
+  });
+
+  test(`cable a ${nombre}: sin tocar se suelta solo al final y pasa`, () => {
+    const s = conCable(en);
+    colgarse(s, en);
+    const eventos = correrHasta(s, en + 26);
+    expect(tipos(eventos)).toContain('soltar');
+    expect(tipos(eventos)).not.toContain('foso');
+    expect(justos(eventos)).toEqual([]);
+    expect(s.vidas).toBe(3);
+  });
+}
+
+test('colgado, saltar también suelta', () => {
+  const s = conCable(20);
+  colgarse(s, 20);
+  correr(s, 0.8);
+  s.saltar();
+  const eventos = s.paso(DT);
+  expect(tipos(eventos)).toContain('soltar');
+  expect(tipos(eventos)).not.toContain('salto');
+  expect(s.postura).toBe('corriendo');
+  expect(s.vaiven).toBeNull();
+});
+
+test('colgado, rodar y cambiar de carril no hacen nada', () => {
+  const s = conCable(20);
+  colgarse(s, 20);
+  s.rodar();
+  s.cambiarCarril(1);
+  const eventos = s.paso(DT);
+  expect(tipos(eventos)).not.toContain('rodar');
+  expect(tipos(eventos)).not.toContain('caida-rapida');
+  expect(tipos(eventos)).not.toContain('carril');
+  expect(s.postura).toBe('colgado');
+  expect(s.caidaRapida).toBe(false);
+});

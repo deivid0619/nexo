@@ -2,12 +2,15 @@ import type { Carril, Evento, Habilidad, Modo, Nivel } from '../datos/niveles/ti
 import {
   ALTO_CONTENEDOR,
   alturaCuerpo,
+  alturaVaiven,
   BONO_JUSTO,
   DURACION_RODAR,
   DURACION_TREPAR,
   DURACION_TREPAR_GOLPE,
   MEDIO_ANCHO_CONTENEDOR,
   type Postura,
+  suelta,
+  VAIVEN_S,
   VENTANA_JUSTO_S,
   VIGA_LIBRE,
   VIGA_TOPE,
@@ -39,6 +42,10 @@ const BORDE_VIGA = 0.35;
 const BORDE_CONTENEDOR = 0.3;
 /** Hasta dónde se ve caer al corredor dentro de un foso. */
 const FONDO_FOSO = -6;
+/** El cable se agarra al pasar por él en el aire, hasta esta distancia después. */
+const ALCANCE_CABLE = 1.2;
+/** Al agarrarse, la altura pasa de la del salto a la del vaivén en esta parte del vaivén. */
+const MEZCLA_AGARRE = 0.2;
 
 export type EstadoCarrera = 'corriendo' | 'derrota' | 'fin';
 
@@ -67,7 +74,9 @@ export type EventoSim =
         | 'rodar'
         | 'caida-rapida'
         | 'trepar'
-        | 'foso';
+        | 'foso'
+        | 'agarre'
+        | 'soltar';
     }
   | { tipo: 'justo'; puntos: number }
   | { tipo: 'portal'; a: Modo }
@@ -99,12 +108,16 @@ export interface Simulacion {
   readonly caidaRapida: boolean;
   /** Altura del suelo bajo el corredor: 0, 2 encima de un contenedor y null sobre un foso. */
   readonly suelo: number | null;
+  /** Colgado del cable: el avance del vaivén, de 0 a 1; si no, null. */
+  readonly vaiven: number | null;
   objetos(): readonly ObjetoPista[];
   /** Avanza `dt` segundos; devuelve lo que pasó (incluye lo que causaron las acciones). */
   paso(dt: number): EventoSim[];
   saltar(): void;
   /** En el suelo rueda; en el aire hace la caída rápida. */
   rodar(): void;
+  /** Suelta el cable (si está colgado). */
+  soltar(): void;
   cambiarCarril(d: -1 | 1): void;
 }
 
@@ -145,6 +158,9 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
   let yTrepar = 0;
   let inicioTrepar = 0;
   let finTrepar = 0;
+  // Cable: cuándo se agarró y a qué altura.
+  let inicioColgado = 0;
+  let yAgarre = 0;
 
   // Empezar a mitad del tramo (modo de prueba): se aplican los portales que ya habrían pasado.
   const desde = Math.max(0, opciones.desde ?? 0);
@@ -245,8 +261,36 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
     pendientes.push({ tipo: 'trepar' });
   }
 
+  const avanceVaiven = () => Math.min(1, (tiempo - inicioColgado) / VAIVEN_S);
+
+  /** Se suelta del cable en el punto del vaivén en que va. */
+  function soltarCable(): void {
+    const u = avanceVaiven();
+    const { vy: impulso, justo } = suelta(u);
+    postura = 'corriendo';
+    enAire = true;
+    vy = impulso;
+    // Sin doble salto en el vuelo del cable.
+    dobleUsado = true;
+    pendientes.push({ tipo: 'soltar' });
+    if (justo) {
+      bono += BONO_JUSTO;
+      pendientes.push({ tipo: 'justo', puntos: BONO_JUSTO });
+    }
+  }
+
   /** Mueve al corredor en vertical según su postura y el suelo que tenga debajo. */
   function moverVertical(dt: number): void {
+    if (postura === 'colgado') {
+      const u = avanceVaiven();
+      if (u >= 1) {
+        soltarCable();
+      } else {
+        const mezcla = Math.max(0, 1 - u / MEZCLA_AGARRE);
+        y = alturaVaiven(u) + (yAgarre - alturaVaiven(0)) * mezcla;
+      }
+      return;
+    }
     if (postura === 'trepando') {
       const pasoElFinal = trepado !== null && trepado.evento.en + largoDe(trepado.evento) - distancia < 0;
       if (pasoElFinal) {
@@ -322,6 +366,24 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
           chocar(o);
         }
         if (!o.roto) pasar(o, BORDE_VIGA, inicioRodar);
+        break;
+      case 'cable':
+        if (
+          o.x <= 0 &&
+          o.x > -ALCANCE_CABLE &&
+          enAire &&
+          y > -0.2 &&
+          postura === 'corriendo' &&
+          !golpeados.has(o.id)
+        ) {
+          golpeados.add(o.id);
+          postura = 'colgado';
+          inicioColgado = tiempo;
+          yAgarre = y;
+          vy = 0;
+          caidaRapida = false;
+          pendientes.push({ tipo: 'agarre' });
+        }
         break;
       case 'contenedor':
         if (
@@ -422,6 +484,9 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
     get suelo() {
       return sueloBajo();
     },
+    get vaiven() {
+      return postura === 'colgado' ? avanceVaiven() : null;
+    },
     nivel,
     objetos: () => objetos,
 
@@ -472,6 +537,11 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
 
     saltar() {
       if (estado !== 'corriendo' || postura === 'trepando' || postura === 'foso') return;
+      // Colgado, saltar suelta el cable.
+      if (postura === 'colgado') {
+        soltarCable();
+        return;
+      }
       if (!enAire) {
         // Saltar corta el giro.
         postura = 'corriendo';
@@ -488,7 +558,7 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
     },
 
     rodar() {
-      if (estado !== 'corriendo' || postura === 'trepando' || postura === 'foso') return;
+      if (estado !== 'corriendo' || postura === 'trepando' || postura === 'foso' || postura === 'colgado') return;
       if (!enAire) {
         empezarRodar();
       } else if (!caidaRapida) {
@@ -498,8 +568,12 @@ export function crearSimulacion(nivel: Nivel, opciones: { desde?: number; sinDan
       }
     },
 
+    soltar() {
+      if (estado === 'corriendo' && postura === 'colgado') soltarCable();
+    },
+
     cambiarCarril(d) {
-      if (estado !== 'corriendo' || modo !== 3 || postura === 'trepando' || postura === 'foso') return;
+      if (estado !== 'corriendo' || modo !== 3 || (postura !== 'corriendo' && postura !== 'rodando')) return;
       const nuevo = Math.max(-1, Math.min(1, carril + d)) as Carril;
       if (nuevo !== carril) {
         carril = nuevo;
