@@ -167,7 +167,14 @@ export function crearCarrera(deps: DepsCarrera): Carrera {
         hud.terminar(panel.resultado);
         panel = null;
       }
-      corredor.actualizar(dt, s, t < golpeHasta, t < aterrizajeHasta);
+      // Lo demás (escudo roto, doble salto, disparo) se conecta en la Tarea 11.
+      corredor.actualizar(dt, s, {
+        golpe: t < golpeHasta,
+        aterrizaje: t < aterrizajeHasta,
+        escudoRoto: false,
+        dobleSalto: false,
+        disparo: false,
+      });
       camara.actualizar(dt, s, aspecto);
       pista.actualizar(dt, t, s, camara.mezcla());
       hud.actualizar({ vidas: s.vidas, puntaje: s.puntaje, avance: Math.min(1, s.distancia / nivel.largo) });

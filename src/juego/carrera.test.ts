@@ -84,8 +84,8 @@ test('un golpe sacude la cámara, hace vibrar y el corredor lo acusa', () => {
   expect(carrera.estado()!.vidas).toBe(2);
   expect(camara.sacudir).toHaveBeenCalledTimes(1);
   expect(vibrar).toHaveBeenCalledWith(120);
-  // actualizar(dt, sim, golpeReciente, aterrizajeReciente)
-  expect(corredor.actualizar.mock.calls.some((c) => c[2] === true)).toBe(true);
+  // actualizar(dt, sim, recientes)
+  expect(corredor.actualizar.mock.calls.some((c) => c[2].golpe === true)).toBe(true);
 });
 
 test('el portal a 3D avisa y cambia la pista a la de los carriles, que se va al cambiar de carril', () => {
