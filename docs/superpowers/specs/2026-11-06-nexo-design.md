@@ -85,8 +85,9 @@ compartir legalmente.
   Android de gama media y verse bien también en iPhone. Va en horizontal; en vertical se muestra un
   aviso para girar el celular. También se puede jugar en computador con teclado.
 - **Controles de un dedo:** tocar salta, o dispara si hay arma. Deslizar hacia arriba salta, y
-  deslizar a los lados cambia de carril en 3D. En teclado: espacio o flecha arriba, flechas a los
-  lados y X para disparar.
+  deslizar a los lados cambia de carril en 3D. Deslizar hacia abajo rueda en el suelo y cae rápido
+  en el aire (David, 2026-11-07, etapa 3). En teclado: espacio o flecha arriba, flecha abajo, flechas
+  a los lados y X para disparar.
 - **Recursos gratuitos:** David no va a hacer ni comprar modelos; Claude consigue todo con recursos
   gratuitos y efectos hechos en código.
 - **Repositorio público** (`github.com/deivid0619/nexo`): solo recursos que se puedan redistribuir
@@ -307,12 +308,22 @@ sobre la velocidad.
    pantallas de carga, inicio y mapa con la escena aprobada.
 2. **Núcleo jugable:** correr, controles, cámara 2D/3D con portal, niveles como datos y un tramo
    de la Tierra baldía.
-3. **Personaje y animación:** modelo final, todas sus animaciones y la mezcla entre ellas.
-4. **Tierra baldía completa:** criaturas, combate, EMP, punto de control y Centinela con 3 fases.
-5. **Historia:** prólogo, radio, registros y sus pantallas.
-6. **Cristal completo:** su mecánica, sus criaturas e Hidra de cristal con 3 fases.
-7. **Pulido y lanzamiento del Capítulo 1:** postprocesado, rendimiento en celular, sonido, pausa,
+3. **Movimientos:** rodar, caída rápida, trepar, balancearse en cables, "¡Justo!", reacciones del
+   personaje y una zona de disparo con drones
+   (`docs/superpowers/specs/2026-11-07-nexo-etapa-3-movimientos-design.md`).
+4. **Tramos al azar:** la pista se arma distinta en cada partida con piezas diseñadas, siempre con
+   un camino posible; ruta de arriba y de abajo, y chatarra que suma puntos.
+5. **Personaje final:** modelo final (abrigo, capucha y mochila) sobre el mismo esqueleto, con todas
+   las animaciones de las etapas 3 y 4 y la mezcla entre ellas.
+6. **Tierra baldía completa:** criaturas, combate, EMP, punto de control y Centinela con 3 fases.
+7. **Historia:** prólogo, radio, registros y sus pantallas.
+8. **Cristal completo:** su mecánica, sus criaturas e Hidra de cristal con 3 fases.
+9. **Pulido y lanzamiento del Capítulo 1:** postprocesado, rendimiento en celular, sonido, pausa,
    resultados, ajustes y créditos.
+
+**Orden actualizado por David (2026-11-07):** eran 7 etapas, con el personaje final en la 3. David
+pidió más movimientos (rodar, trepar, balancearse, disparar) y obstáculos al azar, y aprobó este
+orden de 9 etapas ("perfecto las etapas").
 
 Después: Magma, Vacío, Núcleo y el final.
 
