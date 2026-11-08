@@ -28,9 +28,9 @@ function tecla(key: string, repeat = false) {
   return e;
 }
 
-test('un toque corto salta', () => {
+test('un toque sin moverse es tocar', () => {
   gesto(0, 0);
-  expect(recibidas).toEqual(['saltar']);
+  expect(recibidas).toEqual(['tocar']);
 });
 
 test('deslizar a los lados cambia de carril', () => {
@@ -45,14 +45,24 @@ test('deslizar hacia arriba salta, también en diagonal', () => {
   expect(recibidas).toEqual(['saltar', 'saltar']);
 });
 
-test('menos de 40 px no es deslizar: salta', () => {
+test('menos de 40 px no es deslizar: es tocar', () => {
   gesto(30, 0);
-  expect(recibidas).toEqual(['saltar']);
+  gesto(0, 30);
+  expect(recibidas).toEqual(['tocar', 'tocar']);
 });
 
-test('deslizar hacia abajo no hace nada', () => {
-  gesto(0, 80);
-  expect(recibidas).toEqual([]);
+test('deslizar hacia abajo rueda, también en diagonal', () => {
+  gesto(0, 60);
+  gesto(-30, 70);
+  expect(recibidas).toEqual(['rodar', 'rodar']);
+});
+
+test('cada gesto da una sola intención', () => {
+  gesto(0, 0);
+  gesto(0, 60);
+  gesto(0, -60);
+  gesto(60, 0);
+  expect(recibidas).toEqual(['tocar', 'rodar', 'saltar', 'derecha']);
 });
 
 test('teclas: espacio, flecha arriba y W saltan; flechas y A/D cambian de carril', () => {
@@ -67,8 +77,18 @@ test('teclas: espacio, flecha arriba y W saltan; flechas y A/D cambian de carril
   expect(espacio.defaultPrevented).toBe(true);
 });
 
+test('teclas: flecha abajo y S ruedan; X dispara', () => {
+  tecla('ArrowDown');
+  tecla('s');
+  const x = tecla('X');
+  expect(recibidas).toEqual(['rodar', 'rodar', 'disparar']);
+  expect(x.defaultPrevented).toBe(true);
+});
+
 test('una tecla sostenida no repite', () => {
   tecla(' ', true);
+  tecla('ArrowDown', true);
+  tecla('x', true);
   expect(recibidas).toEqual([]);
 });
 

@@ -1,5 +1,8 @@
-/** Lo que el jugador quiere hacer, venga de un toque o de una tecla. */
-export type Intencion = 'saltar' | 'izquierda' | 'derecha';
+/**
+ * Lo que el jugador quiere hacer, venga de un toque o de una tecla. `tocar` es un toque sin
+ * deslizar: la carrera decide si salta, dispara o suelta el cable.
+ */
+export type Intencion = 'tocar' | 'saltar' | 'rodar' | 'disparar' | 'izquierda' | 'derecha';
 
 /** Desde cuántos píxeles un toque cuenta como deslizar (documento de diseño, sección 4). */
 export const UMBRAL_DESLIZAR_PX = 40;
@@ -8,6 +11,9 @@ const TECLAS: Record<string, Intencion> = {
   ' ': 'saltar',
   arrowup: 'saltar',
   w: 'saltar',
+  arrowdown: 'rodar',
+  s: 'rodar',
+  x: 'disparar',
   arrowleft: 'izquierda',
   a: 'izquierda',
   arrowright: 'derecha',
@@ -21,8 +27,10 @@ export interface Controles {
 }
 
 /**
- * Un dedo: tocar salta, deslizar hacia arriba salta y deslizar a los lados cambia de carril.
- * Teclado: espacio, flecha arriba o W saltan; flechas o A/D cambian de carril.
+ * Un dedo: tocar, deslizar hacia arriba (salta), hacia abajo (rueda) o a los lados (carril). El
+ * sentido lo da el eje en que más se movió el dedo; cada gesto da una sola intención.
+ * Teclado: espacio, flecha arriba o W saltan; flecha abajo o S ruedan; X dispara; flechas o A/D
+ * cambian de carril.
  */
 export function crearControles(superficie: HTMLElement, ventana: Window, alIntentar: (i: Intencion) => void): Controles {
   let activos = false;
@@ -37,9 +45,9 @@ export function crearControles(superficie: HTMLElement, ventana: Window, alInten
     const dx = e.clientX - inicio.x;
     const dy = e.clientY - inicio.y;
     inicio = null;
-    if (Math.abs(dx) > UMBRAL_DESLIZAR_PX && Math.abs(dx) > Math.abs(dy)) alIntentar(dx > 0 ? 'derecha' : 'izquierda');
-    // Un toque o deslizar hacia arriba saltan; deslizar hacia abajo no hace nada.
-    else if (dy <= UMBRAL_DESLIZAR_PX) alIntentar('saltar');
+    if (Math.max(Math.abs(dx), Math.abs(dy)) <= UMBRAL_DESLIZAR_PX) alIntentar('tocar');
+    else if (Math.abs(dx) > Math.abs(dy)) alIntentar(dx > 0 ? 'derecha' : 'izquierda');
+    else alIntentar(dy < 0 ? 'saltar' : 'rodar');
   };
   const alCancelar = () => {
     inicio = null;

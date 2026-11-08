@@ -174,7 +174,10 @@ export function crearCarrera(deps: DepsCarrera): Carrera {
     },
     accion(i) {
       if (!sim) return;
-      if (i === 'saltar') sim.saltar();
+      // Mapeo simple hasta la Tarea 11 (que suma el cable y el arma al toque).
+      if (i === 'tocar' || i === 'saltar') sim.saltar();
+      else if (i === 'rodar') sim.rodar();
+      else if (i === 'disparar') sim.disparar();
       else sim.cambiarCarril(i === 'derecha' ? 1 : -1);
     },
     estado() {
