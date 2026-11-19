@@ -6,9 +6,9 @@ final de cada piso.
 
 ## Jugar
 
-- **Prototipo** (el primer juego jugable): https://deivid260.github.io/nexo/
+- **Prototipo** (el primer juego jugable): https://deivid0619.github.io/nexo/
 - **Avance** (la etapa en construcción: carga, inicio, mapa de la torre y la primera carrera por la
-  Tierra baldía, con rodar, trepar, el cable y la zona de armas): https://deivid260.github.io/nexo/avance/
+  Tierra baldía, con rodar, trepar, el cable y la zona de armas): https://deivid0619.github.io/nexo/avance/
 
 ### Controles de la carrera
 
